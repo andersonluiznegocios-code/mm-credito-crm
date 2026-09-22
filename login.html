@@ -32,6 +32,13 @@
     const btn = document.getElementById("btnEntrar");
     const erroEl = document.getElementById("erro");
 
+    function comTimeout(promessa, ms) {
+      return Promise.race([
+        promessa,
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Tempo esgotado (sem resposta do servidor)")), ms)),
+      ]);
+    }
+
     async function tentarLogin() {
       erroEl.textContent = "";
       const email = document.getElementById("email").value.trim();
@@ -43,29 +50,37 @@
       btn.disabled = true;
       btn.textContent = "Entrando...";
 
-      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password: senha });
-      if (error) {
-        erroEl.textContent = "E-mail ou senha inválidos.";
+      try {
+        const { data, error } = await comTimeout(supabaseClient.auth.signInWithPassword({ email, password: senha }), 15000);
+        if (error) {
+          erroEl.textContent = "E-mail ou senha inválidos. (" + error.message + ")";
+          btn.disabled = false;
+          btn.textContent = "Entrar";
+          return;
+        }
+
+        const { data: profile, error: perfilErro } = await supabaseClient
+          .from("profiles")
+          .select("*")
+          .eq("id", data.user.id)
+          .single();
+
+        if (perfilErro || !profile || !profile.ativo) {
+          erroEl.textContent = perfilErro
+            ? "Erro ao buscar perfil: " + perfilErro.message
+            : "Usuário sem acesso liberado. Fale com o administrador.";
+          await supabaseClient.auth.signOut();
+          btn.disabled = false;
+          btn.textContent = "Entrar";
+          return;
+        }
+
+        window.location.href = profile.role === "admin" ? "admin.html" : "consultor.html";
+      } catch (e) {
+        erroEl.textContent = "Erro de conexão: " + (e && e.message ? e.message : e);
         btn.disabled = false;
         btn.textContent = "Entrar";
-        return;
       }
-
-      const { data: profile, error: perfilErro } = await supabaseClient
-        .from("profiles")
-        .select("*")
-        .eq("id", data.user.id)
-        .single();
-
-      if (perfilErro || !profile || !profile.ativo) {
-        erroEl.textContent = "Usuário sem acesso liberado. Fale com o administrador.";
-        await supabaseClient.auth.signOut();
-        btn.disabled = false;
-        btn.textContent = "Entrar";
-        return;
-      }
-
-      window.location.href = profile.role === "admin" ? "admin.html" : "consultor.html";
     }
 
     btn.addEventListener("click", tentarLogin);
