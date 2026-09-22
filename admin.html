@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MM Crédito — Painel Admin</title>
+<link rel="icon" href="favicon.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand"><img src="logo.png" alt="MM Crédito"> ADMIN</div>
+    <div style="display:flex; align-items:center; gap:16px;">
+      <span class="who" id="whoami"></span>
+      <button onclick="logout()">Sair</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <h1>Painel do administrador</h1>
+    <p class="subtitle">Carregue clientes, sorteie entre os consultores e acompanhe tabulações e vendas.</p>
+
+    <div class="grid-stats" id="stats"></div>
+
+    <h2>1. Carregar clientes (CSV)</h2>
+    <div class="card">
+      <p class="hint" style="margin-top:0;">Arquivo CSV com colunas: CPF, NOME, PMT, TELEFONE (telefones separados por ; ) — igual às bases que você já usa.</p>
+      <input type="file" id="arquivoCsv" accept=".csv">
+      <button class="btn" id="btnImportar" style="margin-left:10px;">Importar</button>
+      <div class="error-msg" id="erroImport"></div>
+      <p class="hint">Depois de importado, cada consultor sorteia os próprios clientes direto no painel dele — você não precisa distribuir manualmente.</p>
+    </div>
+
+    <h2>2. Consultores</h2>
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Nome</th><th>Sorteados</th><th>Tabulados</th><th>Vendas</th><th>Conversão</th><th>Status</th><th>Ação</th></tr></thead>
+          <tbody id="tbodyConsultores"></tbody>
+        </table>
+      </div>
+      <div class="error-msg" id="erroLiberar"></div>
+
+      <h2 style="margin-top:24px;">Novo consultor</h2>
+      <p class="hint" style="margin-top:0;">Cria o login e o perfil dele de uma vez, usando uma Edge Function segura (ver README para publicar).</p>
+      <div class="row">
+        <div class="field"><label>Nome</label><input type="text" id="novoConsultorNome" placeholder="Nome completo"></div>
+        <div class="field"><label>E-mail</label><input type="email" id="novoConsultorEmail" placeholder="email@exemplo.com"></div>
+        <div class="field"><label>Senha</label><input type="password" id="novoConsultorSenha" placeholder="mínimo 6 caracteres"></div>
+      </div>
+      <button class="btn" id="btnCriarConsultor">Criar consultor</button>
+      <div class="error-msg" id="erroCriarConsultor"></div>
+    </div>
+
+    <h2>3. Histórico de sorteios</h2>
+    <div class="card">
+      <p class="hint" style="margin-top:0;">Rastro de qual consultor sorteou qual cliente, com data e horário.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Consultor</th><th>Cliente</th><th>CPF</th><th>Data/Hora do sorteio</th></tr></thead>
+          <tbody id="tbodySorteios"></tbody>
+        </table>
+      </div>
+      <button class="btn secondary hidden" id="btnMaisSorteios" style="margin-top:12px;">Carregar mais</button>
+    </div>
+
+    <h2>4. Tabulações recentes</h2>
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Cliente</th><th>Consultor</th><th>Resultado</th><th>Observação</th><th>Data</th></tr></thead>
+          <tbody id="tbodyTabulacoes"></tbody>
+        </table>
+      </div>
+      <button class="btn secondary hidden" id="btnMaisTabulacoes" style="margin-top:12px;">Carregar mais</button>
+    </div>
+
+    <h2>5. Exportar propostas para digitar na FUNÇÃO</h2>
+    <div class="card">
+      <div id="propostasInfo" style="margin-bottom:12px; color:var(--muted);"></div>
+      <button class="btn" id="btnExportar">Baixar Excel das propostas pendentes</button>
+      <div class="error-msg" id="erroExport"></div>
+    </div>
+
+    <h2>6. Documentos enviados pelos clientes</h2>
+    <div class="card">
+      <p class="hint" style="margin-top:0;">Todos os PDFs/JPEGs anexados pelos consultores. Confira antes de digitar na FUNÇÃO.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Cliente</th><th>CPF</th><th>Consultor</th><th>Arquivo</th><th>Enviado em</th><th></th></tr></thead>
+          <tbody id="tbodyDocumentos"></tbody>
+        </table>
+      </div>
+      <button class="btn secondary hidden" id="btnMaisDocumentos" style="margin-top:12px;">Carregar mais</button>
+    </div>
+
+    <h2>7. Coeficientes (tabela de taxas da MK)</h2>
+    <div class="card">
+      <p class="hint" style="margin-top:0;">Usado no cálculo de simulação (valor da parcela ÷ coeficiente = valor de contrato). Atualize aqui sempre que a MK publicar tabela nova — não precisa mexer em código.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Convênio</th><th>Tabela</th><th>Coeficiente</th><th></th></tr></thead>
+          <tbody id="tbodyCoeficientes"></tbody>
+        </table>
+      </div>
+      <div class="error-msg" id="erroCoeficientes"></div>
+
+      <h2 style="margin-top:24px;">Adicionar novo convênio/tabela</h2>
+      <p class="hint" style="margin-top:0;">Use pra cadastrar coeficientes de convênios novos, como SEPLAG/MG ou PMMG.</p>
+      <div class="row">
+        <div class="field"><label>Convênio</label><input type="text" id="novoConvenio" placeholder="Ex: SEPLAG/MG"></div>
+        <div class="field"><label>Tabela</label><input type="text" id="novaTabela" placeholder="Ex: TOP Comercial"></div>
+        <div class="field"><label>Coeficiente</label><input type="number" step="0.000000001" id="novoCoeficiente" placeholder="0.0000000"></div>
+      </div>
+      <button class="btn" id="btnAdicionarCoeficiente">Adicionar</button>
+    </div>
+
+    <h2>8. Baixar tudo</h2>
+    <div class="card">
+      <p class="hint" style="margin-top:0;">Gera um Excel com todas as abas: clientes, tabulações, propostas, sorteios e documentos.</p>
+      <button class="btn secondary" id="btnExportarTudo">Baixar Excel completo</button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+    let PERFIL = null;
+    let CONSULTORES = [];
+    let LEADS = [];
+    let TABULACOES = [];
+    let PROPOSTAS_PENDENTES = [];
+    let PROPOSTAS_TODAS = [];
+    let SORTEIOS = [];
+    let COEFICIENTES = [];
+    let DOCUMENTOS = [];
+    let LIMITE_SORTEIOS = 25;
+    let LIMITE_TABULACOES = 25;
+    let LIMITE_DOCUMENTOS = 25;
+
+    async function carregarTudo() {
+      const [{ data: consultores }, { data: leads }, { data: tabulacoes }, { data: propostas }, { data: propostasTodas }, { data: sorteios }, { data: coeficientes }, { data: documentos }] = await Promise.all([
+        supabaseClient.from("profiles").select("*").eq("role", "consultor").order("nome"),
+        supabaseClient.from("leads").select("*"),
+        supabaseClient.from("tabulacoes").select("*, leads(nome, cpf), profiles(nome)").order("criado_em", { ascending: false }).limit(LIMITE_TABULACOES),
+        supabaseClient.from("propostas").select("*, leads(nome, cpf, cep, logradouro, numero, complemento, bairro, cidade, uf, telefone_contato, email, banco, agencia, conta, tipo_conta, chave_pix), profiles(nome)").eq("exportado", false),
+        supabaseClient.from("propostas").select("id, consultor_id"),
+        supabaseClient.from("sorteios").select("*, leads(nome, cpf), profiles(nome)").order("sorteado_em", { ascending: false }).limit(LIMITE_SORTEIOS),
+        supabaseClient.from("coeficientes").select("*").order("convenio").order("tabela"),
+        supabaseClient.from("documentos").select("*, leads(nome, cpf), profiles(nome)").order("criado_em", { ascending: false }).limit(LIMITE_DOCUMENTOS),
+      ]);
+      CONSULTORES = consultores || [];
+      LEADS = leads || [];
+      TABULACOES = tabulacoes || [];
+      PROPOSTAS_PENDENTES = propostas || [];
+      PROPOSTAS_TODAS = propostasTodas || [];
+      SORTEIOS = sorteios || [];
+      COEFICIENTES = coeficientes || [];
+      DOCUMENTOS = documentos || [];
+      renderStats();
+      renderConsultores();
+      renderTabulacoes();
+      renderSorteios();
+      renderPropostasInfo();
+      renderCoeficientes();
+      renderDocumentos();
+
+      document.getElementById("btnMaisSorteios").classList.toggle("hidden", SORTEIOS.length < LIMITE_SORTEIOS);
+      document.getElementById("btnMaisTabulacoes").classList.toggle("hidden", TABULACOES.length < LIMITE_TABULACOES);
+      document.getElementById("btnMaisDocumentos").classList.toggle("hidden", DOCUMENTOS.length < LIMITE_DOCUMENTOS);
+    }
+
+    document.getElementById("btnMaisSorteios").addEventListener("click", () => { LIMITE_SORTEIOS += 25; carregarTudo(); });
+    document.getElementById("btnMaisTabulacoes").addEventListener("click", () => { LIMITE_TABULACOES += 25; carregarTudo(); });
+    document.getElementById("btnMaisDocumentos").addEventListener("click", () => { LIMITE_DOCUMENTOS += 25; carregarTudo(); });
+
+    function renderDocumentos() {
+      const tbody = document.getElementById("tbodyDocumentos");
+      if (DOCUMENTOS.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="color:var(--muted);">Nenhum documento enviado ainda.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = DOCUMENTOS.map((d) => `
+        <tr>
+          <td>${d.leads ? (d.leads.nome || "(sem nome)") : "-"}</td>
+          <td>${d.leads ? maskCPF(d.leads.cpf) : "-"}</td>
+          <td>${d.profiles ? d.profiles.nome : "-"}</td>
+          <td>📄 ${d.nome_arquivo}</td>
+          <td>${new Date(d.criado_em).toLocaleString("pt-BR")}</td>
+          <td><button class="btn secondary" style="padding:4px 10px; font-size:12px;" onclick="visualizarDocumentoAdmin('${d.caminho}', '${d.nome_arquivo.replace(/'/g, "\\'")}')">Visualizar</button></td>
+        </tr>
+      `).join("");
+    }
+
+    async function visualizarDocumentoAdmin(caminho, nomeArquivo) {
+      const { data: signed, error } = await supabaseClient.storage.from("documentos-clientes").createSignedUrl(caminho, 300);
+      if (error || !signed) { alert("Não foi possível abrir o documento."); return; }
+      window.open(signed.signedUrl, "_blank");
+    }
+
+    function renderCoeficientes() {
+      const tbody = document.getElementById("tbodyCoeficientes");
+      if (COEFICIENTES.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="color:var(--muted);">Nenhum coeficiente cadastrado.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = COEFICIENTES.map((c, i) => `
+        <tr>
+          <td>${c.convenio}</td>
+          <td>${c.tabela}</td>
+          <td><input type="number" step="0.000000001" id="coef_${i}" value="${c.valor}" style="width:160px;"></td>
+          <td><button class="btn secondary" onclick="salvarCoeficiente('${c.convenio}', '${c.tabela.replace(/'/g, "\\'")}', ${i})">Salvar</button></td>
+        </tr>
+      `).join("");
+    }
+
+    async function salvarCoeficiente(convenio, tabela, i) {
+      const erroEl = document.getElementById("erroCoeficientes");
+      erroEl.textContent = "";
+      const novoValor = parseFloat(document.getElementById(`coef_${i}`).value);
+      if (!novoValor || novoValor <= 0) { erroEl.textContent = "Valor inválido."; return; }
+
+      const { error } = await supabaseClient
+        .from("coeficientes")
+        .update({ valor: novoValor, atualizado_em: new Date().toISOString() })
+        .eq("convenio", convenio).eq("tabela", tabela);
+      if (error) { erroEl.textContent = "Erro ao salvar: " + error.message; return; }
+      erroEl.style.color = "var(--success)";
+      erroEl.textContent = `Coeficiente de ${convenio} / ${tabela} atualizado.`;
+      carregarTudo();
+    }
+
+    document.getElementById("btnAdicionarCoeficiente").addEventListener("click", async () => {
+      const erroEl = document.getElementById("erroCoeficientes");
+      erroEl.textContent = "";
+      const convenio = document.getElementById("novoConvenio").value.trim();
+      const tabela = document.getElementById("novaTabela").value.trim();
+      const valor = parseFloat(document.getElementById("novoCoeficiente").value);
+      if (!convenio || !tabela) { erroEl.textContent = "Preencha convênio e tabela."; return; }
+      if (!valor || valor <= 0) { erroEl.textContent = "Informe um coeficiente válido."; return; }
+
+      const { error } = await supabaseClient.from("coeficientes").insert({ convenio, tabela, valor });
+      if (error) { erroEl.textContent = "Erro ao adicionar: " + error.message; return; }
+
+      document.getElementById("novoConvenio").value = "";
+      document.getElementById("novaTabela").value = "";
+      document.getElementById("novoCoeficiente").value = "";
+      erroEl.style.color = "var(--success)";
+      erroEl.textContent = `${convenio} / ${tabela} adicionado.`;
+      carregarTudo();
+    });
+
+    function renderStats() {
+      const total = LEADS.length;
+      const disponiveis = LEADS.filter((l) => l.status === "novo" && !l.atribuido_a).length;
+      document.getElementById("stats").innerHTML = `
+        <div class="stat"><div class="num">${total}</div><div class="label">Clientes na base</div></div>
+        <div class="stat"><div class="num">${disponiveis}</div><div class="label">Disponíveis p/ sorteio</div></div>
+        <div class="stat"><div class="num">${CONSULTORES.length}</div><div class="label">Consultores ativos</div></div>
+        <div class="stat"><div class="num">${PROPOSTAS_PENDENTES.length}</div><div class="label">Propostas p/ exportar</div></div>
+      `;
+    }
+
+    function renderConsultores() {
+      const tbody = document.getElementById("tbodyConsultores");
+      if (CONSULTORES.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="color:var(--muted);">Nenhum consultor cadastrado ainda.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = CONSULTORES.map((c) => {
+        const meusLeads = LEADS.filter((l) => l.atribuido_a === c.id);
+        const emAndamento = meusLeads.filter((l) => l.status === "em_andamento").length;
+        const tabulados = meusLeads.filter((l) => l.status === "tabulado").length;
+        const vendas = PROPOSTAS_TODAS.filter((p) => p.consultor_id === c.id).length;
+        const conversao = meusLeads.length > 0 ? ((vendas / meusLeads.length) * 100).toFixed(1) : "0.0";
+        return `<tr>
+          <td>${c.nome}</td>
+          <td>${meusLeads.length}</td>
+          <td>${tabulados}</td>
+          <td>${vendas}</td>
+          <td>${conversao}%</td>
+          <td>${c.ativo ? '<span class="badge tabulado">Ativo</span>' : '<span class="badge novo">Inativo</span>'}</td>
+          <td>${emAndamento > 0 ? `<button class="btn secondary" onclick="liberarClientes('${c.id}', '${c.nome.replace(/'/g, "\\'")}', ${emAndamento})">Liberar ${emAndamento} em andamento</button>` : '<span class="hint">-</span>'}</td>
+        </tr>`;
+      }).join("");
+    }
+
+    async function liberarClientes(consultorId, nome, quantidade) {
+      const erroEl = document.getElementById("erroLiberar");
+      erroEl.textContent = "";
+      if (!confirm(`Tem certeza que quer liberar os ${quantidade} cliente(s) em andamento de ${nome}? Eles voltam pra fila e podem ser sorteados por qualquer consultor.`)) return;
+
+      const { error } = await supabaseClient
+        .from("leads")
+        .update({ atribuido_a: null, status: "novo" })
+        .eq("atribuido_a", consultorId)
+        .eq("status", "em_andamento");
+      if (error) { erroEl.textContent = "Erro ao liberar: " + error.message; return; }
+      carregarTudo();
+    }
+
+    document.getElementById("btnCriarConsultor").addEventListener("click", async () => {
+      const erroEl = document.getElementById("erroCriarConsultor");
+      erroEl.textContent = "";
+      const nome = document.getElementById("novoConsultorNome").value.trim();
+      const email = document.getElementById("novoConsultorEmail").value.trim();
+      const senha = document.getElementById("novoConsultorSenha").value;
+      if (!nome || !email || !senha) { erroEl.textContent = "Preencha nome, e-mail e senha."; return; }
+
+      const btn = document.getElementById("btnCriarConsultor");
+      btn.disabled = true; btn.textContent = "Criando...";
+
+      const { data: sessao } = await supabaseClient.auth.getSession();
+      const { data, error } = await supabaseClient.functions.invoke("create-consultor", {
+        body: { nome, email, senha },
+        headers: { Authorization: `Bearer ${sessao.session.access_token}` },
+      });
+
+      btn.disabled = false; btn.textContent = "Criar consultor";
+
+      if (error || data?.error) {
+        erroEl.style.color = "var(--danger)";
+        erroEl.textContent = "Erro: " + (data?.error || error.message);
+        return;
+      }
+
+      document.getElementById("novoConsultorNome").value = "";
+      document.getElementById("novoConsultorEmail").value = "";
+      document.getElementById("novoConsultorSenha").value = "";
+      erroEl.style.color = "var(--success)";
+      erroEl.textContent = `Consultor ${nome} criado com sucesso.`;
+      carregarTudo();
+    });
+
+    function renderTabulacoes() {
+      const tbody = document.getElementById("tbodyTabulacoes");
+      if (TABULACOES.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="color:var(--muted);">Nenhuma tabulação registrada ainda.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = TABULACOES.map((t) => `
+        <tr>
+          <td>${t.leads ? (t.leads.nome || t.leads.cpf) : "-"}</td>
+          <td>${t.profiles ? t.profiles.nome : "-"}</td>
+          <td><span class="badge ${t.resultado === 'vendeu' ? 'vendeu' : 'em_andamento'}">${RESULTADO_LABEL[t.resultado] || t.resultado}</span></td>
+          <td>${t.observacao || "-"}</td>
+          <td>${new Date(t.criado_em).toLocaleString("pt-BR")}</td>
+        </tr>
+      `).join("");
+    }
+
+    function renderSorteios() {
+      const tbody = document.getElementById("tbodySorteios");
+      if (SORTEIOS.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="color:var(--muted);">Nenhum sorteio registrado ainda.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = SORTEIOS.map((s) => `
+        <tr>
+          <td>${s.profiles ? s.profiles.nome : "-"}</td>
+          <td>${s.leads ? (s.leads.nome || "(sem nome)") : "-"}</td>
+          <td>${s.leads ? maskCPF(s.leads.cpf) : "-"}</td>
+          <td>${new Date(s.sorteado_em).toLocaleString("pt-BR")}</td>
+        </tr>
+      `).join("");
+    }
+
+    function renderPropostasInfo() {
+      document.getElementById("propostasInfo").textContent =
+        PROPOSTAS_PENDENTES.length === 0
+          ? "Nenhuma proposta pendente de exportação."
+          : `${PROPOSTAS_PENDENTES.length} proposta(s) prontas para exportar.`;
+    }
+
+    // ---------- 1. Importar CSV ----------
+    document.getElementById("btnImportar").addEventListener("click", async () => {
+      const erroEl = document.getElementById("erroImport");
+      erroEl.textContent = "";
+      const input = document.getElementById("arquivoCsv");
+      if (!input.files || input.files.length === 0) { erroEl.textContent = "Selecione um arquivo CSV."; return; }
+
+      const btn = document.getElementById("btnImportar");
+      btn.disabled = true; btn.textContent = "Importando...";
+
+      try {
+        const texto = await input.files[0].text();
+        const leads = parseLeadsCSV(texto);
+        if (leads.length === 0) { erroEl.textContent = "Nenhum cliente válido encontrado no arquivo."; btn.disabled = false; btn.textContent = "Importar"; return; }
+
+        // insere em lotes de 500; CPF duplicado (já existente na base) é ignorado, não duplica
+        const TAM_LOTE = 500;
+        let totalInseridos = 0;
+        for (let i = 0; i < leads.length; i += TAM_LOTE) {
+          const lote = leads.slice(i, i + TAM_LOTE);
+          const { data: inseridos, error } = await supabaseClient
+            .from("leads")
+            .upsert(lote, { onConflict: "cpf", ignoreDuplicates: true })
+            .select("id");
+          if (error) throw error;
+          totalInseridos += (inseridos || []).length;
+        }
+        const duplicados = leads.length - totalInseridos;
+        input.value = "";
+        await carregarTudo();
+        erroEl.style.color = "var(--success)";
+        erroEl.textContent = duplicados > 0
+          ? `${totalInseridos} cliente(s) novo(s) importado(s). ${duplicados} já existiam na base (CPF duplicado, ignorados).`
+          : `${totalInseridos} cliente(s) importado(s) com sucesso.`;
+      } catch (e) {
+        erroEl.style.color = "var(--danger)";
+        erroEl.textContent = "Erro ao importar: " + e.message;
+      }
+      btn.disabled = false; btn.textContent = "Importar";
+    });
+
+    // ---------- 5. Exportar propostas ----------
+    document.getElementById("btnExportar").addEventListener("click", () => {
+      const erroEl = document.getElementById("erroExport");
+      erroEl.textContent = "";
+      if (PROPOSTAS_PENDENTES.length === 0) { erroEl.textContent = "Não há propostas pendentes."; return; }
+
+      const linhas = PROPOSTAS_PENDENTES.map((p) => {
+        const l = p.leads || {};
+        return {
+          "Nome do Cliente": l.nome, "CPF": l.cpf,
+          "Consultor": p.profiles ? p.profiles.nome : "",
+          "Produtos": p.produtos,
+          "Prazo (meses)": p.prazo,
+          "Valor de Contrato": p.valor_contrato,
+          "Saldo Devedor": p.saldo_devedor,
+          "Troco (Valor Liberado)": p.valor,
+          "CEP": l.cep, "Logradouro": l.logradouro, "Número": l.numero, "Complemento": l.complemento,
+          "Bairro": l.bairro, "Cidade": l.cidade, "UF": l.uf,
+          "Telefone": l.telefone_contato, "E-mail": l.email,
+          "Banco": l.banco, "Agência": l.agencia, "Conta": l.conta, "Tipo de Conta": l.tipo_conta, "Chave PIX": l.chave_pix,
+          "Data da Proposta": new Date(p.criado_em).toLocaleDateString("pt-BR"),
+        };
+      });
+
+      const ws = XLSX.utils.json_to_sheet(linhas);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Propostas");
+      const dataStr = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `propostas_MM_Credito_${dataStr}.xlsx`);
+
+      // pergunta se pode marcar como exportado (evita exportar de novo por engano)
+      if (confirm("Marcar essas propostas como já exportadas, para não aparecerem de novo na próxima exportação?")) {
+        const ids = PROPOSTAS_PENDENTES.map((p) => p.id);
+        supabaseClient.from("propostas").update({ exportado: true }).in("id", ids).then(() => carregarTudo());
+      }
+    });
+
+    // ---------- 6. Exportar tudo ----------
+    document.getElementById("btnExportarTudo").addEventListener("click", async () => {
+      const btn = document.getElementById("btnExportarTudo");
+      btn.disabled = true; btn.textContent = "Gerando...";
+
+      const [{ data: todosLeads }, { data: todasTabulacoes }, { data: todasPropostas }, { data: todosSorteios }, { data: todosDocumentos }, { data: todasRelacionadas }, { data: todosItensSim }] = await Promise.all([
+        supabaseClient.from("leads").select("*, profiles(nome)"),
+        supabaseClient.from("tabulacoes").select("*, leads(nome, cpf), profiles(nome)"),
+        supabaseClient.from("propostas").select("*, leads(nome, cpf, cep, logradouro, numero, complemento, bairro, cidade, uf, telefone_contato, email, banco, agencia, conta, tipo_conta, chave_pix), profiles(nome)"),
+        supabaseClient.from("sorteios").select("*, leads(nome, cpf), profiles(nome)"),
+        supabaseClient.from("documentos").select("*, leads(nome, cpf), profiles(nome)"),
+        supabaseClient.from("pessoas_relacionadas").select("*, leads(nome, cpf), profiles(nome)"),
+        supabaseClient.from("simulacao_itens").select("*, simulacoes(convenio, tabela, prazo, leads(nome, cpf), profiles(nome))"),
+      ]);
+
+      const wb = XLSX.utils.book_new();
+
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet((todosLeads || []).map((l) => ({
+        "Nome": l.nome, "CPF": l.cpf, "PMT": l.pmt, "Telefones (base)": (l.telefones || []).join(" / "),
+        "CEP": l.cep, "Logradouro": l.logradouro, "Número": l.numero, "Complemento": l.complemento,
+        "Bairro": l.bairro, "Cidade": l.cidade, "UF": l.uf,
+        "Telefone Confirmado": l.telefone_contato, "E-mail": l.email,
+        "Banco": l.banco, "Agência": l.agencia, "Conta": l.conta, "Tipo de Conta": l.tipo_conta, "Chave PIX": l.chave_pix,
+        "Status": STATUS_LABEL[l.status] || l.status,
+        "Consultor": l.profiles ? l.profiles.nome : "", "Carregado em": new Date(l.criado_em).toLocaleString("pt-BR"),
+      }))), "Clientes");
+
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet((todasTabulacoes || []).map((t) => ({
+        "Cliente": t.leads ? t.leads.nome : "", "CPF": t.leads ? t.leads.cpf : "",
+        "Consultor": t.profiles ? t.profiles.nome : "", "Resultado": RESULTADO_LABEL[t.resultado] || t.resultado,
+        "Observação": t.observacao || "", "Data": new Date(t.criado_em).toLocaleString("pt-BR"),
+      }))), "Tabulações");
+
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet((todasPropostas || []).map((p) => {
+        const l = p.leads || {};
+        return {
+          "Cliente": l.nome, "CPF": l.cpf,
+          "Consultor": p.profiles ? p.profiles.nome : "", "Produtos": p.produtos, "Prazo (meses)": p.prazo,
+          "Valor de Contrato": p.valor_contrato,
+          "Saldo Devedor": p.saldo_devedor, "Troco (Valor Liberado)": p.valor,
+          "CEP": l.cep, "Logradouro": l.logradouro, "Número": l.numero, "Complemento": l.complemento,
+          "Bairro": l.bairro, "Cidade": l.cidade, "UF": l.uf,
+          "Telefone": l.telefone_contato, "E-mail": l.email,
+          "Banco": l.banco, "Agência": l.agencia, "Conta": l.conta, "Tipo de Conta": l.tipo_conta, "Chave PIX": l.chave_pix,
+          "Data": new Date(p.criado_em).toLocaleString("pt-BR"), "Exportado": p.exportado ? "Sim" : "Não",
+        };
+      })), "Propostas");
+
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet((todosSorteios || []).map((s) => ({
+        "Consultor": s.profiles ? s.profiles.nome : "", "Cliente": s.leads ? s.leads.nome : "",
+        "CPF": s.leads ? s.leads.cpf : "", "Data/Hora do sorteio": new Date(s.sorteado_em).toLocaleString("pt-BR"),
+      }))), "Sorteios");
+
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet((todosDocumentos || []).map((d) => ({
+        "Cliente": d.leads ? d.leads.nome : "", "CPF": d.leads ? d.leads.cpf : "",
+        "Consultor": d.profiles ? d.profiles.nome : "", "Arquivo": d.nome_arquivo, "Tipo": d.tipo,
+        "Enviado em": new Date(d.criado_em).toLocaleString("pt-BR"),
+      }))), "Documentos");
+
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet((todasRelacionadas || []).map((p) => ({
+        "Cliente": p.leads ? p.leads.nome : "", "CPF": p.leads ? p.leads.cpf : "",
+        "Consultor": p.profiles ? p.profiles.nome : "", "Nome": p.nome, "Telefone": p.telefone || "",
+        "Parentesco": p.parentesco || "", "Cadastrado em": new Date(p.criado_em).toLocaleString("pt-BR"),
+      }))), "Pessoas Relacionadas");
+
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet((todosItensSim || []).map((i) => {
+        const s = i.simulacoes || {};
+        const l = s.leads || {};
+        return {
+          "Cliente": l.nome, "CPF": l.cpf, "Consultor": s.profiles ? s.profiles.nome : "",
+          "Prazo (meses)": s.prazo,
+          "Produto": PRODUTO_LABEL[i.produto] || i.produto,
+          "Tipo": i.tipo === "amortizacao" ? "Amortização" : "Margem nova",
+          "Credor": i.credor || "", "Convênio": i.convenio, "Tabela": i.tabela, "Coeficiente": i.coeficiente,
+          "Dívida": i.divida, "Parcela": i.parcela,
+          "Valor de Contrato": i.valor_contrato, "Liberação": i.troco,
+          "Data": new Date(i.criado_em).toLocaleString("pt-BR"),
+        };
+      })), "Itens de Simulação");
+
+      const dataStr = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `MM_Credito_completo_${dataStr}.xlsx`);
+      btn.disabled = false; btn.textContent = "Baixar Excel completo";
+    });
+
+    (async () => {
+      const auth = await exigirLogin("admin");
+      if (!auth) return;
+      PERFIL = auth.profile;
+      document.getElementById("whoami").textContent = PERFIL.nome;
+      carregarTudo();
+    })();
+  </script>
+</body>
+</html>

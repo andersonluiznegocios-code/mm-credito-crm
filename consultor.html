@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MM Crédito — Meus Clientes</title>
+<link rel="icon" href="favicon.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand"><img src="logo.png" alt="MM Crédito"></div>
+    <div style="display:flex; align-items:center; gap:16px;">
+      <span class="who" id="whoami"></span>
+      <button onclick="logout()">Sair</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <h1>Meus clientes</h1>
+    <p class="subtitle">Sorteie um novo cliente quando quiser trabalhar em alguém novo. Clique num cliente já sorteado pra abrir a tela dele.</p>
+
+    <div class="card">
+      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+        <div id="disponiveisInfo" style="color:var(--muted); font-size:14px;">Carregando disponibilidade...</div>
+        <button class="btn" id="btnSortear">Sortear novo cliente</button>
+      </div>
+      <div class="error-msg" id="erroSorteio"></div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-top:0;">🏆 Ranking da equipe</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Consultor</th><th>Sorteados</th><th>Tabulados</th><th>Vendas</th></tr></thead>
+          <tbody id="tbodyRanking"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card hidden" id="cardReagendamentos">
+      <h2 style="margin-top:0;">📅 Retornos de hoje (ou atrasados)</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Cliente</th><th>CPF</th><th>Reagendado para</th></tr></thead>
+          <tbody id="tbodyReagendamentos"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="grid-stats" id="stats"></div>
+
+    <div class="card">
+      <div class="row" style="margin-bottom:16px;">
+        <select id="filtroStatus">
+          <option value="">Todos os status</option>
+          <option value="em_andamento">Em andamento</option>
+          <option value="tabulado">Tabulado</option>
+        </select>
+        <input type="text" id="busca" placeholder="Buscar por nome ou CPF...">
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Nome</th><th>CPF</th><th>PMT</th><th>Status</th><th>Última tabulação</th></tr>
+          </thead>
+          <tbody id="tbodyLeads"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+    let PERFIL = null;
+    let LEADS_CACHE = [];
+
+    async function carregarLeads() {
+      const { data, error } = await supabaseClient
+        .from("leads")
+        .select("*, tabulacoes(resultado, criado_em, reagendado_para)")
+        .eq("atribuido_a", PERFIL.id)
+        .order("criado_em", { ascending: false });
+      if (error) { console.error(error); return; }
+      LEADS_CACHE = data || [];
+      renderStats();
+      renderTabela();
+      renderReagendamentos();
+    }
+
+    function ultimaTabulacaoObj(lead) {
+      if (!lead.tabulacoes || lead.tabulacoes.length === 0) return null;
+      return [...lead.tabulacoes].sort((a, b) => new Date(b.criado_em) - new Date(a.criado_em))[0];
+    }
+
+    function renderReagendamentos() {
+      const fimDeHoje = new Date();
+      fimDeHoje.setHours(23, 59, 59, 999);
+
+      const pendentes = LEADS_CACHE
+        .filter((l) => l.status === "em_andamento")
+        .map((l) => ({ lead: l, ultima: ultimaTabulacaoObj(l) }))
+        .filter(({ ultima }) => ultima && ultima.resultado === "reagendar" && ultima.reagendado_para && new Date(ultima.reagendado_para) <= fimDeHoje)
+        .sort((a, b) => new Date(a.ultima.reagendado_para) - new Date(b.ultima.reagendado_para));
+
+      const card = document.getElementById("cardReagendamentos");
+      if (pendentes.length === 0) { card.classList.add("hidden"); return; }
+      card.classList.remove("hidden");
+      document.getElementById("tbodyReagendamentos").innerHTML = pendentes.map(({ lead, ultima }) => {
+        const atrasado = new Date(ultima.reagendado_para) < new Date();
+        return `
+        <tr style="cursor:pointer;" onclick="window.location.href='cliente.html?id=${lead.id}'">
+          <td>${lead.nome || "(sem nome)"}</td>
+          <td>${maskCPF(lead.cpf)}</td>
+          <td style="${atrasado ? "color:var(--danger); font-weight:bold;" : ""}">${new Date(ultima.reagendado_para).toLocaleString("pt-BR")}${atrasado ? " (atrasado)" : ""}</td>
+        </tr>`;
+      }).join("");
+    }
+
+    function renderStats() {
+      const total = LEADS_CACHE.length;
+      const andamento = LEADS_CACHE.filter((l) => l.status === "em_andamento").length;
+      const tabulados = LEADS_CACHE.filter((l) => l.status === "tabulado").length;
+      document.getElementById("stats").innerHTML = `
+        <div class="stat"><div class="num">${total}</div><div class="label">Total sorteados por mim</div></div>
+        <div class="stat"><div class="num">${andamento}</div><div class="label">Em andamento</div></div>
+        <div class="stat"><div class="num">${tabulados}</div><div class="label">Tabulados</div></div>
+      `;
+    }
+
+    function ultimaTabulacao(lead) {
+      if (!lead.tabulacoes || lead.tabulacoes.length === 0) return "-";
+      const ordenadas = [...lead.tabulacoes].sort((a, b) => new Date(b.criado_em) - new Date(a.criado_em));
+      return RESULTADO_LABEL[ordenadas[0].resultado] || ordenadas[0].resultado;
+    }
+
+    function renderTabela() {
+      const filtroStatus = document.getElementById("filtroStatus").value;
+      const busca = document.getElementById("busca").value.trim().toLowerCase();
+      const tbody = document.getElementById("tbodyLeads");
+
+      const filtrados = LEADS_CACHE.filter((l) => {
+        if (filtroStatus && l.status !== filtroStatus) return false;
+        if (busca && !((l.nome || "").toLowerCase().includes(busca) || (l.cpf || "").includes(busca))) return false;
+        return true;
+      });
+
+      if (filtrados.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="color:var(--muted);">Nenhum cliente encontrado.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtrados.map((l) => `
+        <tr style="cursor:pointer;" onclick="window.location.href='cliente.html?id=${l.id}'">
+          <td>${l.nome || "(sem nome)"}</td>
+          <td>${l.cpf ? maskCPF(l.cpf) : "-"}</td>
+          <td>${formatBRL(l.pmt)}</td>
+          <td><span class="badge ${l.status}">${STATUS_LABEL[l.status]}</span></td>
+          <td>${ultimaTabulacao(l)}</td>
+        </tr>
+      `).join("");
+    }
+
+    document.getElementById("filtroStatus").addEventListener("change", renderTabela);
+    document.getElementById("busca").addEventListener("input", renderTabela);
+
+    async function atualizarDisponiveis() {
+      const { data, error } = await supabaseClient.rpc("contar_disponiveis");
+      const el = document.getElementById("disponiveisInfo");
+      if (error) { el.textContent = "Não foi possível checar a disponibilidade."; return; }
+      el.textContent = data > 0
+        ? `${data} cliente(s) disponível(is) para sorteio.`
+        : "Não há clientes disponíveis para sorteio no momento.";
+      document.getElementById("btnSortear").disabled = data === 0;
+    }
+
+    document.getElementById("btnSortear").addEventListener("click", async () => {
+      const erroEl = document.getElementById("erroSorteio");
+      erroEl.textContent = "";
+      const btn = document.getElementById("btnSortear");
+      btn.disabled = true; btn.textContent = "Sorteando...";
+
+      const { data, error } = await supabaseClient.rpc("sortear_cliente");
+
+      if (error) { erroEl.textContent = "Erro ao sortear: " + error.message; btn.disabled = false; btn.textContent = "Sortear novo cliente"; return; }
+      if (!data) { erroEl.textContent = "Não há clientes disponíveis no momento."; btn.disabled = false; btn.textContent = "Sortear novo cliente"; atualizarDisponiveis(); return; }
+
+      window.location.href = `cliente.html?id=${data.id}`;
+    });
+
+    async function carregarRanking() {
+      const { data, error } = await supabaseClient.rpc("ranking_consultores");
+      const tbody = document.getElementById("tbodyRanking");
+      if (error || !data) { tbody.innerHTML = `<tr><td colspan="5" style="color:var(--muted);">Não foi possível carregar o ranking.</td></tr>`; return; }
+      tbody.innerHTML = data.map((c, i) => `
+        <tr style="${c.consultor_id === PERFIL.id ? 'background: rgba(212,175,55,0.1); font-weight:bold;' : ''}">
+          <td>${i + 1}º</td>
+          <td>${c.nome}${c.consultor_id === PERFIL.id ? " (você)" : ""}</td>
+          <td>${c.sorteados}</td>
+          <td>${c.tabulados}</td>
+          <td>${c.vendas}</td>
+        </tr>
+      `).join("");
+    }
+
+    (async () => {
+      const auth = await exigirLogin("consultor");
+      if (!auth) return;
+      PERFIL = auth.profile;
+      document.getElementById("whoami").textContent = PERFIL.nome;
+      carregarLeads();
+      atualizarDisponiveis();
+      carregarRanking();
+    })();
+  </script>
+</body>
+</html>

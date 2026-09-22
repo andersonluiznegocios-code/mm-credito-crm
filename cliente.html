@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MM Crédito — Cliente</title>
+<link rel="icon" href="favicon.png">
+<link rel="stylesheet" href="style.css">
+<style>
+  .wizard-step { opacity: 0.4; pointer-events: none; }
+  .wizard-step.ativo { opacity: 1; pointer-events: auto; }
+  .wizard-step h2 { display: flex; align-items: center; gap: 10px; }
+  .step-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px; border-radius: 50%; background: var(--gold);
+    color: var(--black); font-size: 13px; font-weight: bold;
+  }
+  .doc-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #2a3868; }
+  .resumo-simulacao { background: var(--black); border-radius: 8px; padding: 14px; margin-bottom: 16px; font-size: 14px; }
+  .resumo-simulacao div { margin-bottom: 4px; }
+  .resumo-simulacao .lbl { color: var(--muted); font-size: 11px; text-transform: uppercase; margin-right: 6px; }
+  .tabela-sim { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+  .tabela-sim th { text-align: left; font-size: 11px; color: var(--muted); text-transform: uppercase; padding: 6px 8px; border-bottom: 1px solid #2a3868; }
+  .tabela-sim td { padding: 6px 8px; border-bottom: 1px solid #2a3868; vertical-align: middle; }
+  .tabela-sim input[type="text"], .tabela-sim input[type="number"] { width: 100%; padding: 6px; box-sizing: border-box; }
+  .tabela-sim input[type="checkbox"] { width: 18px; height: 18px; }
+  .tabela-sim select { width: 100%; margin-bottom: 4px; padding: 4px; box-sizing: border-box; font-size: 12px; }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand"><img src="logo.png" alt="MM Crédito"></div>
+    <div style="display:flex; align-items:center; gap:16px;">
+      <span class="who" id="whoami"></span>
+      <button onclick="logout()">Sair</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <a href="consultor.html" style="color:var(--gold-soft); text-decoration:none; font-size:13px;">&larr; Voltar para meus clientes</a>
+
+    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-top:14px;">
+      <h1 style="margin:0;" id="nomeCliente">Carregando...</h1>
+      <button class="btn secondary" id="btnSairCliente">Sair deste cliente</button>
+    </div>
+    <p class="subtitle">Status: <span class="badge" id="statusBadge"></span></p>
+    <div class="error-msg" id="sairErro"></div>
+
+    <div class="card">
+      <h2 style="margin-top:0;">Dados da base</h2>
+      <div class="lead-info" id="leadInfo"></div>
+    </div>
+
+    <!-- ===== ABAS ===== -->
+    <div class="tabs">
+      <button class="tab-btn ativa" data-tab="cadastrais" onclick="mudarAba('cadastrais')">Dados Cadastrais</button>
+      <button class="tab-btn" data-tab="observacoes" onclick="mudarAba('observacoes')">Observações</button>
+      <button class="tab-btn" data-tab="documentos" onclick="mudarAba('documentos')">Documentos Digitalizados</button>
+      <button class="tab-btn" data-tab="relacionadas" onclick="mudarAba('relacionadas')">Pessoas Relacionadas</button>
+    </div>
+
+    <!-- ---- ABA: DADOS CADASTRAIS ---- -->
+    <div class="tab-panel ativa" id="tab-cadastrais">
+      <p class="hint" style="margin-top:0;">Necessário pra fechar a venda — é o que vai ser digitado na FUNÇÃO.</p>
+
+      <p class="hint" style="margin-bottom:6px;"><strong>Endereço</strong></p>
+      <div class="row">
+        <div class="field"><label>CEP</label><input type="text" id="cadCep" placeholder="00000-000"></div>
+        <div class="field" style="flex:2;"><label>Logradouro</label><input type="text" id="cadLogradouro" placeholder="Rua, Av..."></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Número</label><input type="text" id="cadNumero"></div>
+        <div class="field"><label>Complemento</label><input type="text" id="cadComplemento" placeholder="Apto, bloco..."></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Bairro</label><input type="text" id="cadBairro"></div>
+        <div class="field"><label>Cidade</label><input type="text" id="cadCidade"></div>
+        <div class="field" style="max-width:90px;"><label>UF</label><input type="text" id="cadUf" maxlength="2" style="text-transform:uppercase;"></div>
+      </div>
+
+      <p class="hint" style="margin-bottom:6px; margin-top:16px;"><strong>Contato</strong></p>
+      <div class="row">
+        <div class="field"><label>Telefone</label><input type="text" id="cadTelefone" placeholder="(11) 90000-0000"></div>
+        <div class="field"><label>E-mail</label><input type="email" id="cadEmail" placeholder="cliente@email.com"></div>
+      </div>
+
+      <p class="hint" style="margin-bottom:6px; margin-top:16px;"><strong>Dados bancários</strong></p>
+      <div class="row">
+        <div class="field"><label>Banco</label><input type="text" id="cadBanco" placeholder="Ex: Bradesco, Caixa..."></div>
+        <div class="field"><label>Agência</label><input type="text" id="cadAgencia"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Conta</label><input type="text" id="cadConta"></div>
+        <div class="field"><label>Tipo de conta</label>
+          <select id="cadTipoConta">
+            <option value="">Selecione...</option>
+            <option value="corrente">Corrente</option>
+            <option value="poupanca">Poupança</option>
+          </select>
+        </div>
+      </div>
+      <div class="field"><label>Chave PIX (opcional)</label><input type="text" id="cadChavePix"></div>
+
+      <button class="btn secondary" id="btnSalvarCadastro">Salvar cadastro</button>
+      <div class="hint" id="cadastroStatus"></div>
+    </div>
+
+    <!-- ---- ABA: OBSERVAÇÕES ---- -->
+    <div class="tab-panel" id="tab-observacoes">
+      <h2 style="margin-top:0;">Histórico de contatos</h2>
+      <div class="table-wrap" style="margin-bottom:20px;">
+        <table>
+          <thead><tr><th>Data</th><th>Resultado</th><th>Observação</th></tr></thead>
+          <tbody id="tbodyObservacoes"></tbody>
+        </table>
+      </div>
+
+      <h2>Nova tabulação (quando não é venda)</h2>
+      <div class="field">
+        <label>Resultado do contato</label>
+        <select id="resultado">
+          <option value="">Selecione...</option>
+          <option value="nao_atende">Não atende</option>
+          <option value="sem_interesse">Sem interesse</option>
+          <option value="recusou">Recusou</option>
+          <option value="vai_pensar">Vai pensar</option>
+          <option value="reagendar">Reagendar</option>
+          <option value="numero_errado">Número errado</option>
+        </select>
+      </div>
+      <div class="field hidden" id="campoReagendar">
+        <label>Reagendar para</label>
+        <input type="datetime-local" id="reagendadoPara">
+      </div>
+      <div class="field"><label>Observação (opcional)</label><textarea id="observacao" rows="2"></textarea></div>
+      <button class="btn secondary" id="btnSalvarTabulacao">Salvar tabulação</button>
+      <div class="hint" id="tabulacaoStatus"></div>
+    </div>
+
+    <!-- ---- ABA: DOCUMENTOS ---- -->
+    <div class="tab-panel" id="tab-documentos">
+      <h2 style="margin-top:0;">Documentos do cliente (PDF ou JPEG)</h2>
+      <div id="listaDocumentos" style="margin-bottom:14px;"></div>
+      <input type="file" id="arquivoDocumento" accept=".pdf,.jpg,.jpeg">
+      <button class="btn secondary" id="btnEnviarDocumento" style="margin-left:10px;">Enviar documento</button>
+      <div class="hint" id="documentoStatus"></div>
+    </div>
+
+    <!-- ---- ABA: PESSOAS RELACIONADAS ---- -->
+    <div class="tab-panel" id="tab-relacionadas">
+      <h2 style="margin-top:0;">Pessoas relacionadas</h2>
+      <p class="hint" style="margin-top:0;">Referências do cliente — parente, contato de recado, etc.</p>
+      <div class="table-wrap" style="margin-bottom:20px;">
+        <table>
+          <thead><tr><th>Nome</th><th>Telefone</th><th>Parentesco</th><th></th></tr></thead>
+          <tbody id="tbodyRelacionadas"></tbody>
+        </table>
+      </div>
+      <div class="row">
+        <div class="field"><label>Nome</label><input type="text" id="relNome"></div>
+        <div class="field"><label>Telefone</label><input type="text" id="relTelefone"></div>
+        <div class="field"><label>Parentesco/relação</label><input type="text" id="relParentesco" placeholder="Ex: Mãe, vizinho, irmão..."></div>
+      </div>
+      <button class="btn secondary" id="btnSalvarRelacionada">Adicionar</button>
+      <div class="hint" id="relacionadaStatus"></div>
+    </div>
+
+    <!-- ===== PASSO 1: SIMULAR ===== -->
+    <div class="card wizard-step ativo" id="stepSimular">
+      <h2><span class="step-num">1</span> Simular proposta</h2>
+      <div class="field" style="max-width:200px;"><label>Prazo (meses)</label><select id="simPrazo"></select></div>
+      <p class="hint">Cada linha abaixo tem seu próprio convênio e tabela — pode combinar convênios diferentes na mesma operação.</p>
+
+      <!-- CARTÃO DE CRÉDITO -->
+      <h2 style="margin-top:20px;">Cartão de Crédito</h2>
+      <table class="tabela-sim">
+        <thead><tr><th></th><th>Credor</th><th>Dívida</th><th>Parcela</th><th>Convênio / Tabela</th><th>Liberação</th><th>Contrato</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><input type="checkbox" class="sim-incluir" data-produto="cartao_credito" data-tipo="amortizacao"></td>
+            <td><input type="text" class="sim-credor" placeholder="Ex: BMG" data-produto="cartao_credito" data-tipo="amortizacao"></td>
+            <td><input type="number" step="0.01" class="sim-divida" value="0" data-produto="cartao_credito" data-tipo="amortizacao"></td>
+            <td><input type="number" step="0.01" class="sim-parcela" value="0" data-produto="cartao_credito" data-tipo="amortizacao"></td>
+            <td>
+              <select class="sim-convenio" data-produto="cartao_credito" data-tipo="amortizacao"></select>
+              <select class="sim-tabela" data-produto="cartao_credito" data-tipo="amortizacao"></select>
+            </td>
+            <td class="sim-liberacao" data-produto="cartao_credito" data-tipo="amortizacao">R$ 0,00</td>
+            <td class="sim-contrato" data-produto="cartao_credito" data-tipo="amortizacao">R$ 0,00</td>
+          </tr>
+          <tr>
+            <td><input type="checkbox" class="sim-incluir" data-produto="cartao_credito" data-tipo="margem"></td>
+            <td class="hint">Margem nova</td>
+            <td class="hint">-</td>
+            <td><input type="number" step="0.01" class="sim-parcela" value="0" data-produto="cartao_credito" data-tipo="margem"></td>
+            <td>
+              <select class="sim-convenio" data-produto="cartao_credito" data-tipo="margem"></select>
+              <select class="sim-tabela" data-produto="cartao_credito" data-tipo="margem"></select>
+            </td>
+            <td class="sim-liberacao" data-produto="cartao_credito" data-tipo="margem">R$ 0,00</td>
+            <td class="sim-contrato" data-produto="cartao_credito" data-tipo="margem">R$ 0,00</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- CARTÃO BENEFÍCIO -->
+      <h2 style="margin-top:20px;">Cartão Benefício</h2>
+      <table class="tabela-sim">
+        <thead><tr><th></th><th>Credor</th><th>Dívida</th><th>Parcela</th><th>Convênio / Tabela</th><th>Liberação</th><th>Contrato</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><input type="checkbox" class="sim-incluir" data-produto="cartao_beneficio" data-tipo="amortizacao"></td>
+            <td><input type="text" class="sim-credor" placeholder="Ex: BMG" data-produto="cartao_beneficio" data-tipo="amortizacao"></td>
+            <td><input type="number" step="0.01" class="sim-divida" value="0" data-produto="cartao_beneficio" data-tipo="amortizacao"></td>
+            <td><input type="number" step="0.01" class="sim-parcela" value="0" data-produto="cartao_beneficio" data-tipo="amortizacao"></td>
+            <td>
+              <select class="sim-convenio" data-produto="cartao_beneficio" data-tipo="amortizacao"></select>
+              <select class="sim-tabela" data-produto="cartao_beneficio" data-tipo="amortizacao"></select>
+            </td>
+            <td class="sim-liberacao" data-produto="cartao_beneficio" data-tipo="amortizacao">R$ 0,00</td>
+            <td class="sim-contrato" data-produto="cartao_beneficio" data-tipo="amortizacao">R$ 0,00</td>
+          </tr>
+          <tr>
+            <td><input type="checkbox" class="sim-incluir" data-produto="cartao_beneficio" data-tipo="margem"></td>
+            <td class="hint">Margem nova</td>
+            <td class="hint">-</td>
+            <td><input type="number" step="0.01" class="sim-parcela" value="0" data-produto="cartao_beneficio" data-tipo="margem"></td>
+            <td>
+              <select class="sim-convenio" data-produto="cartao_beneficio" data-tipo="margem"></select>
+              <select class="sim-tabela" data-produto="cartao_beneficio" data-tipo="margem"></select>
+            </td>
+            <td class="sim-liberacao" data-produto="cartao_beneficio" data-tipo="margem">R$ 0,00</td>
+            <td class="sim-contrato" data-produto="cartao_beneficio" data-tipo="margem">R$ 0,00</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- EMPRÉSTIMO CONSIGNÁVEL -->
+      <h2 style="margin-top:20px;">Empréstimo Consignável</h2>
+      <table class="tabela-sim">
+        <thead><tr><th></th><th>Dívida</th><th>Parcela</th><th>Convênio / Tabela</th><th>Liberação</th><th>Contrato</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><input type="checkbox" class="sim-incluir" data-produto="emprestimo" data-tipo="margem"></td>
+            <td><input type="number" step="0.01" class="sim-divida" value="0" data-produto="emprestimo" data-tipo="margem"></td>
+            <td><input type="number" step="0.01" class="sim-parcela" value="0" data-produto="emprestimo" data-tipo="margem"></td>
+            <td>
+              <select class="sim-convenio" data-produto="emprestimo" data-tipo="margem"></select>
+              <select class="sim-tabela" data-produto="emprestimo" data-tipo="margem"></select>
+            </td>
+            <td class="sim-liberacao" data-produto="emprestimo" data-tipo="margem">R$ 0,00</td>
+            <td class="sim-contrato" data-produto="emprestimo" data-tipo="margem">R$ 0,00</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- TOTAL OPERAÇÃO -->
+      <div class="resumo-simulacao" style="margin-top:20px;">
+        <div><span class="lbl">Liberação Cartão de Crédito</span> <span id="totCC">R$ 0,00</span></div>
+        <div><span class="lbl">Liberação Cartão Benefício</span> <span id="totCB">R$ 0,00</span></div>
+        <div><span class="lbl">Empréstimo Consignável</span> <span id="totEMP">R$ 0,00</span></div>
+        <div style="margin-top:8px; font-size:18px;"><span class="lbl">Total Operação</span> <strong id="totGeral" style="color:var(--gold-soft);">R$ 0,00</strong></div>
+      </div>
+
+      <button class="btn" id="btnSimular" style="margin-top:16px;">Simular e gravar</button>
+      <div class="error-msg" id="simuladorErro"></div>
+    </div>
+
+    <!-- ===== PASSO 2: CADASTRAR VENDA ===== -->
+    <div class="card wizard-step" id="stepVenda">
+      <h2><span class="step-num">2</span> Cadastrar venda</h2>
+      <p class="hint" style="margin-top:0;">Dados vindos da simulação gravada.</p>
+      <div class="resumo-simulacao" id="resumoSimulacao"></div>
+
+      <p class="hint" id="avisoDocumentos" style="color:var(--gold-soft);"></p>
+      <button class="btn" id="btnSalvarVenda">Salvar proposta e enviar ao admin</button>
+      <div class="error-msg" id="vendaErro"></div>
+      <div id="vendaSucesso" class="hidden" style="color:var(--success); font-weight:bold; margin-top:10px;">
+        ✓ Proposta salva e disponível para o administrador exportar.
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de visualização de documento -->
+  <div class="modal-overlay hidden" id="previewOverlay">
+    <div class="modal" style="max-width:800px;">
+      <button class="modal-close" onclick="fecharPreview()">&times;</button>
+      <h3 id="previewTitulo">Documento</h3>
+      <div id="previewConteudo"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+    let PERFIL = null;
+    let LEAD = null;
+    let ULTIMA_SIMULACAO = null;
+    let ULTIMOS_ITENS = [];
+    let DOCUMENTOS = [];
+    let COEFICIENTES = {};
+
+    // ---------- Abas ----------
+    function mudarAba(nome) {
+      document.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("ativa", b.dataset.tab === nome));
+      document.querySelectorAll(".tab-panel").forEach((p) => p.classList.toggle("ativa", p.id === "tab-" + nome));
+    }
+
+    async function carregarCoeficientes() {
+      const { data, error } = await supabaseClient.from("coeficientes").select("*");
+      if (error || !data) return;
+      COEFICIENTES = {};
+      for (const c of data) {
+        if (!COEFICIENTES[c.convenio]) COEFICIENTES[c.convenio] = {};
+        COEFICIENTES[c.convenio][c.tabela] = c.valor;
+      }
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const LEAD_ID = parseInt(params.get("id"), 10);
+
+    function preencherSelect(el, valores) {
+      el.innerHTML = valores.map((v) => `<option value="${v}">${v}</option>`).join("");
+    }
+    preencherSelect(document.getElementById("simPrazo"), PRAZOS_MESES);
+
+    // Popula convênio/tabela em cada linha da simulação, de forma independente
+    const CONVENIOS_DISPONIVEIS = Object.keys(TABELAS_POR_CONVENIO);
+    document.querySelectorAll(".sim-convenio").forEach((selConvenio) => {
+      preencherSelect(selConvenio, CONVENIOS_DISPONIVEIS);
+      const linha = selConvenio.closest("tr");
+      const selTabela = linha.querySelector(".sim-tabela");
+      preencherSelect(selTabela, TABELAS_POR_CONVENIO[selConvenio.value]);
+      selConvenio.addEventListener("change", () => {
+        preencherSelect(selTabela, TABELAS_POR_CONVENIO[selConvenio.value]);
+        recalcular();
+      });
+    });
+    document.querySelectorAll(".sim-divida, .sim-parcela, .sim-incluir, .sim-tabela").forEach((el) => {
+      el.addEventListener("input", recalcular);
+      el.addEventListener("change", recalcular);
+    });
+
+    // Retorna a lista de linhas marcadas com "Incluir" e seus valores calculados
+    function recalcular() {
+      const itens = [];
+      let totCC = 0, totCB = 0, totEMP = 0;
+
+      document.querySelectorAll(".sim-incluir").forEach((chk) => {
+        const produto = chk.dataset.produto;
+        const tipo = chk.dataset.tipo;
+        const linhaSel = `[data-produto="${produto}"][data-tipo="${tipo}"]`;
+        const divida = parseFloat((document.querySelector(".sim-divida" + linhaSel) || {}).value) || 0;
+        const parcela = parseFloat(document.querySelector(".sim-parcela" + linhaSel).value) || 0;
+        const credorEl = document.querySelector(".sim-credor" + linhaSel);
+        const credor = credorEl ? credorEl.value.trim() : "";
+        const convenio = document.querySelector(".sim-convenio" + linhaSel).value;
+        const tabela = document.querySelector(".sim-tabela" + linhaSel).value;
+        const coeficiente = (COEFICIENTES[convenio] || {})[tabela];
+
+        let valorContrato = 0, liberacao = 0;
+        if (chk.checked && coeficiente && parcela) {
+          valorContrato = parcela / coeficiente;
+          liberacao = valorContrato - divida;
+        }
+
+        const tdLib = document.querySelector(".sim-liberacao" + linhaSel);
+        const tdCon = document.querySelector(".sim-contrato" + linhaSel);
+        if (tdLib) tdLib.textContent = formatBRL(liberacao);
+        if (tdCon) tdCon.textContent = formatBRL(valorContrato);
+
+        if (chk.checked && coeficiente && parcela) {
+          itens.push({ produto, tipo, credor: credor || null, convenio, tabela, coeficiente, divida, parcela, valor_contrato: valorContrato, troco: liberacao });
+          if (produto === "cartao_credito") totCC += liberacao;
+          else if (produto === "cartao_beneficio") totCB += liberacao;
+          else totEMP += liberacao;
+        }
+      });
+
+      document.getElementById("totCC").textContent = formatBRL(totCC);
+      document.getElementById("totCB").textContent = formatBRL(totCB);
+      document.getElementById("totEMP").textContent = formatBRL(totEMP);
+      const totalGeral = totCC + totCB + totEMP;
+      document.getElementById("totGeral").textContent = formatBRL(totalGeral);
+
+      return { itens, totCC, totCB, totEMP, totalGeral };
+    }
+
+    async function carregarCliente() {
+      if (!LEAD_ID) { window.location.href = "consultor.html"; return; }
+      const { data, error } = await supabaseClient.from("leads").select("*").eq("id", LEAD_ID).single();
+      if (error || !data) { alert("Cliente não encontrado ou você não tem acesso a ele."); window.location.href = "consultor.html"; return; }
+      LEAD = data;
+
+      document.getElementById("nomeCliente").textContent = LEAD.nome || "(sem nome)";
+      document.getElementById("statusBadge").className = "badge " + LEAD.status;
+      document.getElementById("statusBadge").textContent = STATUS_LABEL[LEAD.status] || LEAD.status;
+      document.getElementById("btnSairCliente").classList.toggle("hidden", LEAD.status !== "em_andamento");
+      document.getElementById("leadInfo").innerHTML = `
+        <div><span class="lbl">CPF</span><br>${LEAD.cpf || "-"}</div>
+        <div><span class="lbl">PMT</span><br>${formatBRL(LEAD.pmt)}</div>
+        <div><span class="lbl">Telefones (base)</span><br>${(LEAD.telefones || []).join(" · ") || "-"}</div>
+      `;
+      // pré-preenche a linha de margem nova do cartão de crédito com a PMT do cliente, como ponto de partida
+      const campoMargemCC = document.querySelector('.sim-parcela[data-produto="cartao_credito"][data-tipo="margem"]');
+      if (campoMargemCC) campoMargemCC.value = LEAD.pmt || 0;
+
+      // pré-preenche o cadastro (endereço/contato/dados bancários) se já tiver algo salvo
+      document.getElementById("cadCep").value = LEAD.cep || "";
+      document.getElementById("cadLogradouro").value = LEAD.logradouro || "";
+      document.getElementById("cadNumero").value = LEAD.numero || "";
+      document.getElementById("cadComplemento").value = LEAD.complemento || "";
+      document.getElementById("cadBairro").value = LEAD.bairro || "";
+      document.getElementById("cadCidade").value = LEAD.cidade || "";
+      document.getElementById("cadUf").value = LEAD.uf || "";
+      document.getElementById("cadTelefone").value = LEAD.telefone_contato || (LEAD.telefones || [])[0] || "";
+      document.getElementById("cadEmail").value = LEAD.email || "";
+      document.getElementById("cadBanco").value = LEAD.banco || "";
+      document.getElementById("cadAgencia").value = LEAD.agencia || "";
+      document.getElementById("cadConta").value = LEAD.conta || "";
+      document.getElementById("cadTipoConta").value = LEAD.tipo_conta || "";
+      document.getElementById("cadChavePix").value = LEAD.chave_pix || "";
+
+      await carregarDocumentos();
+      await carregarObservacoes();
+      await carregarRelacionadas();
+      recalcular();
+    }
+
+    function cadastroCompleto() {
+      const camposObrigatorios = [
+        "cadLogradouro", "cadNumero", "cadBairro", "cadCidade", "cadUf",
+        "cadTelefone", "cadEmail", "cadBanco", "cadAgencia", "cadConta", "cadTipoConta",
+      ];
+      return camposObrigatorios.every((id) => document.getElementById(id).value.trim() !== "");
+    }
+
+    // ---------- Cadastro (endereço, contato, dados bancários) ----------
+    document.getElementById("btnSalvarCadastro").addEventListener("click", async () => {
+      const statusEl = document.getElementById("cadastroStatus");
+      const cadastro = {
+        cep: document.getElementById("cadCep").value.trim(),
+        logradouro: document.getElementById("cadLogradouro").value.trim(),
+        numero: document.getElementById("cadNumero").value.trim(),
+        complemento: document.getElementById("cadComplemento").value.trim(),
+        bairro: document.getElementById("cadBairro").value.trim(),
+        cidade: document.getElementById("cadCidade").value.trim(),
+        uf: document.getElementById("cadUf").value.trim().toUpperCase(),
+        telefone_contato: document.getElementById("cadTelefone").value.trim(),
+        email: document.getElementById("cadEmail").value.trim(),
+        banco: document.getElementById("cadBanco").value.trim(),
+        agencia: document.getElementById("cadAgencia").value.trim(),
+        conta: document.getElementById("cadConta").value.trim(),
+        tipo_conta: document.getElementById("cadTipoConta").value || null,
+        chave_pix: document.getElementById("cadChavePix").value.trim(),
+      };
+      statusEl.style.color = "var(--muted)"; statusEl.textContent = "Salvando...";
+      const { error } = await supabaseClient.from("leads").update(cadastro).eq("id", LEAD.id);
+      if (error) { statusEl.style.color = "var(--danger)"; statusEl.textContent = "Erro: " + error.message; return; }
+      Object.assign(LEAD, cadastro);
+      statusEl.style.color = "var(--success)"; statusEl.textContent = "Cadastro salvo.";
+      atualizarAvisoDocumentos();
+    });
+
+    // ---------- Documentos ----------
+    async function carregarDocumentos() {
+      const lista = document.getElementById("listaDocumentos");
+      lista.innerHTML = `<span class="hint">Carregando documentos...</span>`;
+      const { data, error } = await supabaseClient
+        .from("documentos").select("*").eq("lead_id", LEAD.id).order("criado_em", { ascending: false });
+      DOCUMENTOS = data || [];
+      atualizarAvisoDocumentos();
+      if (error) { lista.innerHTML = `<span class="hint">Erro ao carregar documentos.</span>`; return; }
+      if (DOCUMENTOS.length === 0) { lista.innerHTML = `<span class="hint">Nenhum documento enviado ainda.</span>`; return; }
+
+      lista.innerHTML = "";
+      for (const doc of DOCUMENTOS) {
+        const row = document.createElement("div");
+        row.className = "doc-item";
+        row.innerHTML = `
+          <span style="color:var(--gold-soft);">📄 ${doc.nome_arquivo}</span>
+          <span>
+            <button class="btn secondary" style="padding:4px 10px; font-size:12px;" onclick="visualizarDocumento(${doc.id})">Visualizar</button>
+            <button class="btn secondary" style="padding:4px 10px; font-size:12px; color:var(--danger); border-color:var(--danger);" onclick="excluirDocumento(${doc.id})">Excluir</button>
+          </span>`;
+        lista.appendChild(row);
+      }
+    }
+
+    async function visualizarDocumento(docId) {
+      const doc = DOCUMENTOS.find((d) => d.id === docId);
+      if (!doc) return;
+      const { data: signed, error } = await supabaseClient.storage.from("documentos-clientes").createSignedUrl(doc.caminho, 300);
+      if (error || !signed) { alert("Não foi possível abrir o documento."); return; }
+
+      const conteudo = document.getElementById("previewConteudo");
+      if (doc.tipo === "pdf") {
+        conteudo.innerHTML = `<iframe src="${signed.signedUrl}" style="width:100%; height:75vh; border:none; border-radius:6px;"></iframe>`;
+      } else {
+        conteudo.innerHTML = `<img src="${signed.signedUrl}" style="max-width:100%; max-height:75vh; display:block; margin:0 auto; border-radius:6px;">`;
+      }
+      document.getElementById("previewTitulo").textContent = doc.nome_arquivo;
+      document.getElementById("previewOverlay").classList.remove("hidden");
+    }
+
+    function fecharPreview() {
+      document.getElementById("previewOverlay").classList.add("hidden");
+      document.getElementById("previewConteudo").innerHTML = "";
+    }
+
+    async function excluirDocumento(docId) {
+      const doc = DOCUMENTOS.find((d) => d.id === docId);
+      if (!doc) return;
+      if (!confirm(`Excluir o documento "${doc.nome_arquivo}"? Essa ação não pode ser desfeita.`)) return;
+
+      const { error: erroStorage } = await supabaseClient.storage.from("documentos-clientes").remove([doc.caminho]);
+      if (erroStorage) { alert("Erro ao excluir arquivo: " + erroStorage.message); return; }
+      const { error: erroMeta } = await supabaseClient.from("documentos").delete().eq("id", docId);
+      if (erroMeta) { alert("Erro ao excluir registro: " + erroMeta.message); return; }
+      carregarDocumentos();
+    }
+
+    document.getElementById("btnEnviarDocumento").addEventListener("click", async () => {
+      const statusEl = document.getElementById("documentoStatus");
+      const input = document.getElementById("arquivoDocumento");
+      if (!input.files || input.files.length === 0) { statusEl.style.color = "var(--danger)"; statusEl.textContent = "Selecione um arquivo (PDF ou JPEG)."; return; }
+      const arquivo = input.files[0];
+      const ext = arquivo.name.split(".").pop().toLowerCase();
+      if (!["pdf", "jpg", "jpeg"].includes(ext)) { statusEl.style.color = "var(--danger)"; statusEl.textContent = "Só é permitido PDF ou JPEG."; return; }
+
+      statusEl.style.color = "var(--muted)"; statusEl.textContent = "Enviando...";
+      const caminho = `${LEAD.id}/${Date.now()}_${arquivo.name}`;
+      const { error: erroUpload } = await supabaseClient.storage.from("documentos-clientes").upload(caminho, arquivo);
+      if (erroUpload) { statusEl.style.color = "var(--danger)"; statusEl.textContent = "Erro: " + erroUpload.message; return; }
+
+      const { error: erroMeta } = await supabaseClient.from("documentos").insert({
+        lead_id: LEAD.id, consultor_id: PERFIL.id, nome_arquivo: arquivo.name, caminho, tipo: ext,
+      });
+      if (erroMeta) { statusEl.style.color = "var(--danger)"; statusEl.textContent = "Erro ao registrar: " + erroMeta.message; return; }
+
+      input.value = "";
+      statusEl.style.color = "var(--success)"; statusEl.textContent = "Documento enviado.";
+      carregarDocumentos();
+    });
+
+    function atualizarAvisoDocumentos() {
+      const aviso = document.getElementById("avisoDocumentos");
+      const btnVenda = document.getElementById("btnSalvarVenda");
+      const faltaDocs = DOCUMENTOS.length === 0;
+      const faltaCadastro = !cadastroCompleto();
+
+      if (faltaDocs && faltaCadastro) {
+        aviso.textContent = "Complete o cadastro (aba \"Dados Cadastrais\") e anexe pelo menos 1 documento (aba \"Documentos Digitalizados\") antes de salvar a proposta.";
+      } else if (faltaCadastro) {
+        aviso.textContent = "Complete o cadastro do cliente na aba \"Dados Cadastrais\" antes de salvar a proposta.";
+      } else if (faltaDocs) {
+        aviso.textContent = "Anexe pelo menos 1 documento na aba \"Documentos Digitalizados\" antes de salvar a proposta.";
+      } else {
+        aviso.textContent = `Cadastro completo e ${DOCUMENTOS.length} documento(s) anexado(s). Pronto pra salvar.`;
+      }
+      btnVenda.disabled = faltaDocs || faltaCadastro;
+    }
+
+    // ---------- Observações (histórico + nova tabulação) ----------
+    async function carregarObservacoes() {
+      const tbody = document.getElementById("tbodyObservacoes");
+      const { data, error } = await supabaseClient
+        .from("tabulacoes").select("*").eq("lead_id", LEAD.id).order("criado_em", { ascending: false });
+      if (error || !data || data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="3" style="color:var(--muted);">Nenhum contato registrado ainda.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = data.map((t) => `
+        <tr>
+          <td>${new Date(t.criado_em).toLocaleString("pt-BR")}</td>
+          <td><span class="badge ${t.resultado === 'vendeu' ? 'vendeu' : 'em_andamento'}">${RESULTADO_LABEL[t.resultado] || t.resultado}</span></td>
+          <td>${t.observacao || "-"}${t.reagendado_para ? ` <span class="hint">(reagendado p/ ${new Date(t.reagendado_para).toLocaleString("pt-BR")})</span>` : ""}</td>
+        </tr>
+      `).join("");
+    }
+
+    document.getElementById("resultado").addEventListener("change", (e) => {
+      document.getElementById("campoReagendar").classList.toggle("hidden", e.target.value !== "reagendar");
+    });
+
+    document.getElementById("btnSalvarTabulacao").addEventListener("click", async () => {
+      const statusEl = document.getElementById("tabulacaoStatus");
+      const resultado = document.getElementById("resultado").value;
+      if (!resultado) { statusEl.style.color = "var(--danger)"; statusEl.textContent = "Selecione um resultado."; return; }
+      const observacao = document.getElementById("observacao").value.trim();
+
+      let reagendadoPara = null;
+      if (resultado === "reagendar") {
+        const valor = document.getElementById("reagendadoPara").value;
+        if (!valor) { statusEl.style.color = "var(--danger)"; statusEl.textContent = "Informe a data/hora do reagendamento."; return; }
+        reagendadoPara = new Date(valor).toISOString();
+      }
+
+      statusEl.style.color = "var(--muted)"; statusEl.textContent = "Salvando...";
+      const { error } = await supabaseClient.from("tabulacoes").insert({
+        lead_id: LEAD.id, consultor_id: PERFIL.id, resultado, observacao: observacao || null, reagendado_para: reagendadoPara,
+      });
+      if (error) { statusEl.style.color = "var(--danger)"; statusEl.textContent = "Erro: " + error.message; return; }
+
+      const finais = ["sem_interesse", "recusou", "numero_errado"];
+      const novoStatus = finais.includes(resultado) ? "tabulado" : "em_andamento";
+      await supabaseClient.from("leads").update({ status: novoStatus }).eq("id", LEAD.id);
+      LEAD.status = novoStatus;
+      document.getElementById("statusBadge").className = "badge " + novoStatus;
+      document.getElementById("statusBadge").textContent = STATUS_LABEL[novoStatus];
+
+      statusEl.style.color = "var(--success)"; statusEl.textContent = "Tabulação salva.";
+      document.getElementById("resultado").value = "";
+      document.getElementById("observacao").value = "";
+      document.getElementById("reagendadoPara").value = "";
+      document.getElementById("campoReagendar").classList.add("hidden");
+      carregarObservacoes();
+    });
+
+    // ---------- Pessoas relacionadas ----------
+    async function carregarRelacionadas() {
+      const tbody = document.getElementById("tbodyRelacionadas");
+      const { data, error } = await supabaseClient
+        .from("pessoas_relacionadas").select("*").eq("lead_id", LEAD.id).order("criado_em", { ascending: false });
+      if (error || !data || data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="color:var(--muted);">Nenhuma pessoa relacionada cadastrada.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = data.map((p) => `
+        <tr>
+          <td>${p.nome}</td>
+          <td>${p.telefone || "-"}</td>
+          <td>${p.parentesco || "-"}</td>
+          <td><button class="btn secondary" style="padding:4px 10px; font-size:12px; color:var(--danger); border-color:var(--danger);" onclick="excluirRelacionada(${p.id})">Excluir</button></td>
+        </tr>
+      `).join("");
+    }
+
+    document.getElementById("btnSalvarRelacionada").addEventListener("click", async () => {
+      const statusEl = document.getElementById("relacionadaStatus");
+      const nome = document.getElementById("relNome").value.trim();
+      const telefone = document.getElementById("relTelefone").value.trim();
+      const parentesco = document.getElementById("relParentesco").value.trim();
+      if (!nome) { statusEl.style.color = "var(--danger)"; statusEl.textContent = "Informe o nome."; return; }
+
+      statusEl.style.color = "var(--muted)"; statusEl.textContent = "Salvando...";
+      const { error } = await supabaseClient.from("pessoas_relacionadas").insert({
+        lead_id: LEAD.id, consultor_id: PERFIL.id, nome, telefone: telefone || null, parentesco: parentesco || null,
+      });
+      if (error) { statusEl.style.color = "var(--danger)"; statusEl.textContent = "Erro: " + error.message; return; }
+
+      document.getElementById("relNome").value = "";
+      document.getElementById("relTelefone").value = "";
+      document.getElementById("relParentesco").value = "";
+      statusEl.style.color = "var(--success)"; statusEl.textContent = "Adicionado.";
+      carregarRelacionadas();
+    });
+
+    async function excluirRelacionada(id) {
+      if (!confirm("Excluir essa pessoa relacionada?")) return;
+      const { error } = await supabaseClient.from("pessoas_relacionadas").delete().eq("id", id);
+      if (error) { alert("Erro ao excluir: " + error.message); return; }
+      carregarRelacionadas();
+    }
+
+    // ---------- Passo 1: Simular ----------
+    document.getElementById("btnSimular").addEventListener("click", async () => {
+      const erroEl = document.getElementById("simuladorErro");
+      erroEl.textContent = "";
+      const prazo = parseInt(document.getElementById("simPrazo").value, 10);
+
+      const calculo = recalcular();
+      if (calculo.itens.length === 0) { erroEl.textContent = "Marque \"Incluir\" em pelo menos uma linha (informe convênio, tabela e parcela)."; return; }
+
+      const btn = document.getElementById("btnSimular");
+      btn.disabled = true; btn.textContent = "Gravando...";
+
+      const somaDivida = calculo.itens.reduce((s, i) => s + i.divida, 0);
+      const somaContrato = calculo.itens.reduce((s, i) => s + i.valor_contrato, 0);
+
+      const { data: simulacao, error } = await supabaseClient.from("simulacoes").insert({
+        lead_id: LEAD.id, consultor_id: PERFIL.id, prazo,
+        saldo_devedor: somaDivida, valor_contrato: somaContrato, troco: calculo.totalGeral,
+      }).select().single();
+
+      if (error) { btn.disabled = false; btn.textContent = "Simular e gravar"; erroEl.textContent = "Erro ao gravar simulação: " + error.message; return; }
+
+      const itensParaInserir = calculo.itens.map((i) => ({ ...i, simulacao_id: simulacao.id }));
+      const { error: erroItens } = await supabaseClient.from("simulacao_itens").insert(itensParaInserir);
+
+      btn.disabled = false; btn.textContent = "Simular e gravar";
+      if (erroItens) { erroEl.textContent = "Erro ao gravar itens da simulação: " + erroItens.message; return; }
+
+      ULTIMA_SIMULACAO = simulacao;
+      ULTIMOS_ITENS = calculo.itens;
+      liberarPassoVenda();
+    });
+
+    function liberarPassoVenda() {
+      const linhas = ULTIMOS_ITENS.map((i) => `
+        <div>
+          <span class="lbl">${PRODUTO_LABEL[i.produto]}${i.tipo === "amortizacao" ? " — Amortização" + (i.credor ? " (" + i.credor + ")" : "") : " — Margem nova"}</span>
+          ${i.convenio} / ${i.tabela} · Parcela ${formatBRL(i.parcela)} · Dívida ${formatBRL(i.divida)} · Contrato ${formatBRL(i.valor_contrato)} · Liberação ${formatBRL(i.troco)}
+        </div>`).join("");
+      document.getElementById("resumoSimulacao").innerHTML = `
+        <div><span class="lbl">Prazo</span>${ULTIMA_SIMULACAO.prazo} meses</div>
+        <div style="margin:10px 0; border-top:1px solid #2a3868; padding-top:8px;">${linhas}</div>
+        <div><span class="lbl">Saldo devedor total</span>${formatBRL(ULTIMA_SIMULACAO.saldo_devedor)}</div>
+        <div><span class="lbl">Valor de contrato total</span>${formatBRL(ULTIMA_SIMULACAO.valor_contrato)}</div>
+        <div style="margin-top:8px; font-size:16px;"><span class="lbl">Total Operação (liberação)</span><strong style="color:var(--gold-soft);">${formatBRL(ULTIMA_SIMULACAO.troco)}</strong></div>
+      `;
+      document.getElementById("vendaSucesso").classList.add("hidden");
+      atualizarAvisoDocumentos();
+      document.getElementById("stepVenda").classList.add("ativo");
+      document.getElementById("stepVenda").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    // ---------- Passo 2: Cadastrar venda ----------
+    document.getElementById("btnSalvarVenda").addEventListener("click", async () => {
+      const erroEl = document.getElementById("vendaErro");
+      erroEl.textContent = "";
+      if (!ULTIMA_SIMULACAO) { erroEl.textContent = "Simule a proposta primeiro."; return; }
+      if (!cadastroCompleto()) { erroEl.textContent = "Complete o cadastro do cliente (aba \"Dados Cadastrais\") antes de salvar."; mudarAba("cadastrais"); return; }
+      if (DOCUMENTOS.length === 0) { erroEl.textContent = "Anexe ao menos 1 documento (aba \"Documentos Digitalizados\") antes de salvar."; mudarAba("documentos"); return; }
+
+      const btn = document.getElementById("btnSalvarVenda");
+      btn.disabled = true; btn.textContent = "Salvando...";
+
+      const produtosIncluidos = [...new Set(ULTIMOS_ITENS.map((i) => PRODUTO_LABEL[i.produto]))].join(", ");
+
+      const { error: erroProp } = await supabaseClient.from("propostas").insert({
+        lead_id: LEAD.id, consultor_id: PERFIL.id, simulacao_id: ULTIMA_SIMULACAO.id,
+        produtos: produtosIncluidos, prazo: ULTIMA_SIMULACAO.prazo,
+        saldo_devedor: ULTIMA_SIMULACAO.saldo_devedor,
+        valor_contrato: ULTIMA_SIMULACAO.valor_contrato, valor: ULTIMA_SIMULACAO.troco,
+      });
+      if (erroProp) { erroEl.textContent = "Erro ao salvar proposta: " + erroProp.message; btn.disabled = false; btn.textContent = "Salvar proposta e enviar ao admin"; return; }
+
+      await supabaseClient.from("tabulacoes").insert({
+        lead_id: LEAD.id, consultor_id: PERFIL.id, resultado: "vendeu", observacao: null,
+      });
+      await supabaseClient.from("leads").update({ status: "tabulado" }).eq("id", LEAD.id);
+      LEAD.status = "tabulado";
+      document.getElementById("statusBadge").className = "badge tabulado";
+      document.getElementById("statusBadge").textContent = "Tabulado";
+
+      btn.disabled = false; btn.textContent = "Salvar proposta e enviar ao admin";
+      document.getElementById("vendaSucesso").classList.remove("hidden");
+      carregarObservacoes();
+    });
+
+    // ---------- Sair do cliente (devolve pra fila) ----------
+    document.getElementById("btnSairCliente").addEventListener("click", async () => {
+      const erroEl = document.getElementById("sairErro");
+      erroEl.textContent = "";
+      if (!confirm("Tem certeza que quer sair deste cliente? Ele volta pra fila e pode ser sorteado por outro consultor.")) return;
+
+      const btn = document.getElementById("btnSairCliente");
+      btn.disabled = true; btn.textContent = "Saindo...";
+
+      const { error } = await supabaseClient.rpc("sair_do_cliente", { p_lead_id: LEAD.id });
+      if (error) {
+        erroEl.textContent = "Erro ao sair do cliente: " + error.message;
+        btn.disabled = false; btn.textContent = "Sair deste cliente";
+        return;
+      }
+      window.location.href = "consultor.html";
+    });
+
+    (async () => {
+      const auth = await exigirLogin("consultor");
+      if (!auth) return;
+      PERFIL = auth.profile;
+      document.getElementById("whoami").textContent = PERFIL.nome;
+      await carregarCoeficientes();
+      carregarCliente();
+    })();
+  </script>
+</body>
+</html>
