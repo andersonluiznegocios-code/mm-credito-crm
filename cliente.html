@@ -7,14 +7,12 @@
 <link rel="icon" href="favicon.png">
 <link rel="stylesheet" href="style.css">
 <style>
-  .wizard-step { opacity: 0.4; pointer-events: none; }
-  .wizard-step.ativo { opacity: 1; pointer-events: auto; }
-  .wizard-step h2 { display: flex; align-items: center; gap: 10px; }
   .step-num {
     display: inline-flex; align-items: center; justify-content: center;
     width: 26px; height: 26px; border-radius: 50%; background: var(--gold);
     color: var(--black); font-size: 13px; font-weight: bold;
   }
+  .card h2 { display: flex; align-items: center; gap: 10px; }
   .doc-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #2a3868; }
   .resumo-simulacao { background: var(--black); border-radius: 8px; padding: 14px; margin-bottom: 16px; font-size: 14px; }
   .resumo-simulacao div { margin-bottom: 4px; }
@@ -25,6 +23,8 @@
   .tabela-sim input[type="text"], .tabela-sim input[type="number"] { width: 100%; padding: 6px; box-sizing: border-box; }
   .tabela-sim input[type="checkbox"] { width: 18px; height: 18px; }
   .tabela-sim select { width: 100%; margin-bottom: 4px; padding: 4px; box-sizing: border-box; font-size: 12px; }
+  .finalizar-bloco { border: 1px solid #2a3868; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+  .finalizar-bloco h3 { margin-top: 0; }
 </style>
 </head>
 <body>
@@ -46,21 +46,113 @@
     <p class="subtitle">Status: <span class="badge" id="statusBadge"></span></p>
     <div class="error-msg" id="sairErro"></div>
 
+    <!-- ===== DADOS DA BASE ===== -->
     <div class="card">
       <h2 style="margin-top:0;">Dados da base</h2>
       <div class="lead-info" id="leadInfo"></div>
     </div>
 
-    <!-- ===== ABAS ===== -->
-    <div class="tabs">
-      <button class="tab-btn ativa" data-tab="cadastrais" onclick="mudarAba('cadastrais')">Dados Cadastrais</button>
-      <button class="tab-btn" data-tab="observacoes" onclick="mudarAba('observacoes')">Observações</button>
-      <button class="tab-btn" data-tab="documentos" onclick="mudarAba('documentos')">Documentos Digitalizados</button>
-      <button class="tab-btn" data-tab="relacionadas" onclick="mudarAba('relacionadas')">Pessoas Relacionadas</button>
+    <!-- ===== 1. SIMULAR ===== -->
+    <div class="card" id="secaoSimular">
+      <h2><span class="step-num">1</span> Simular proposta</h2>
+      <div class="field" style="max-width:200px;"><label>Prazo (meses)</label><select id="simPrazo"></select></div>
+      <p class="hint">Cada linha abaixo tem seu próprio convênio e tabela — pode combinar convênios diferentes na mesma operação.</p>
+
+      <h2 style="margin-top:20px;">Cartão de Crédito</h2>
+      <table class="tabela-sim">
+        <thead><tr><th></th><th>Credor</th><th>Dívida</th><th>Parcela</th><th>Convênio / Tabela</th><th>Liberação</th><th>Contrato</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><input type="checkbox" class="sim-incluir" data-produto="cartao_credito" data-tipo="amortizacao"></td>
+            <td><input type="text" class="sim-credor" placeholder="Ex: BMG" data-produto="cartao_credito" data-tipo="amortizacao"></td>
+            <td><input type="number" step="0.01" class="sim-divida" value="0" data-produto="cartao_credito" data-tipo="amortizacao"></td>
+            <td><input type="number" step="0.01" class="sim-parcela" value="0" data-produto="cartao_credito" data-tipo="amortizacao"></td>
+            <td>
+              <select class="sim-convenio" data-produto="cartao_credito" data-tipo="amortizacao"></select>
+              <select class="sim-tabela" data-produto="cartao_credito" data-tipo="amortizacao"></select>
+            </td>
+            <td class="sim-liberacao" data-produto="cartao_credito" data-tipo="amortizacao">R$ 0,00</td>
+            <td class="sim-contrato" data-produto="cartao_credito" data-tipo="amortizacao">R$ 0,00</td>
+          </tr>
+          <tr>
+            <td><input type="checkbox" class="sim-incluir" data-produto="cartao_credito" data-tipo="margem"></td>
+            <td class="hint">Margem nova</td>
+            <td class="hint">-</td>
+            <td><input type="number" step="0.01" class="sim-parcela" value="0" data-produto="cartao_credito" data-tipo="margem"></td>
+            <td>
+              <select class="sim-convenio" data-produto="cartao_credito" data-tipo="margem"></select>
+              <select class="sim-tabela" data-produto="cartao_credito" data-tipo="margem"></select>
+            </td>
+            <td class="sim-liberacao" data-produto="cartao_credito" data-tipo="margem">R$ 0,00</td>
+            <td class="sim-contrato" data-produto="cartao_credito" data-tipo="margem">R$ 0,00</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2 style="margin-top:20px;">Cartão Benefício</h2>
+      <table class="tabela-sim">
+        <thead><tr><th></th><th>Credor</th><th>Dívida</th><th>Parcela</th><th>Convênio / Tabela</th><th>Liberação</th><th>Contrato</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><input type="checkbox" class="sim-incluir" data-produto="cartao_beneficio" data-tipo="amortizacao"></td>
+            <td><input type="text" class="sim-credor" placeholder="Ex: BMG" data-produto="cartao_beneficio" data-tipo="amortizacao"></td>
+            <td><input type="number" step="0.01" class="sim-divida" value="0" data-produto="cartao_beneficio" data-tipo="amortizacao"></td>
+            <td><input type="number" step="0.01" class="sim-parcela" value="0" data-produto="cartao_beneficio" data-tipo="amortizacao"></td>
+            <td>
+              <select class="sim-convenio" data-produto="cartao_beneficio" data-tipo="amortizacao"></select>
+              <select class="sim-tabela" data-produto="cartao_beneficio" data-tipo="amortizacao"></select>
+            </td>
+            <td class="sim-liberacao" data-produto="cartao_beneficio" data-tipo="amortizacao">R$ 0,00</td>
+            <td class="sim-contrato" data-produto="cartao_beneficio" data-tipo="amortizacao">R$ 0,00</td>
+          </tr>
+          <tr>
+            <td><input type="checkbox" class="sim-incluir" data-produto="cartao_beneficio" data-tipo="margem"></td>
+            <td class="hint">Margem nova</td>
+            <td class="hint">-</td>
+            <td><input type="number" step="0.01" class="sim-parcela" value="0" data-produto="cartao_beneficio" data-tipo="margem"></td>
+            <td>
+              <select class="sim-convenio" data-produto="cartao_beneficio" data-tipo="margem"></select>
+              <select class="sim-tabela" data-produto="cartao_beneficio" data-tipo="margem"></select>
+            </td>
+            <td class="sim-liberacao" data-produto="cartao_beneficio" data-tipo="margem">R$ 0,00</td>
+            <td class="sim-contrato" data-produto="cartao_beneficio" data-tipo="margem">R$ 0,00</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2 style="margin-top:20px;">Empréstimo Consignável</h2>
+      <table class="tabela-sim">
+        <thead><tr><th></th><th>Dívida</th><th>Parcela</th><th>Convênio / Tabela</th><th>Liberação</th><th>Contrato</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><input type="checkbox" class="sim-incluir" data-produto="emprestimo" data-tipo="margem"></td>
+            <td><input type="number" step="0.01" class="sim-divida" value="0" data-produto="emprestimo" data-tipo="margem"></td>
+            <td><input type="number" step="0.01" class="sim-parcela" value="0" data-produto="emprestimo" data-tipo="margem"></td>
+            <td>
+              <select class="sim-convenio" data-produto="emprestimo" data-tipo="margem"></select>
+              <select class="sim-tabela" data-produto="emprestimo" data-tipo="margem"></select>
+            </td>
+            <td class="sim-liberacao" data-produto="emprestimo" data-tipo="margem">R$ 0,00</td>
+            <td class="sim-contrato" data-produto="emprestimo" data-tipo="margem">R$ 0,00</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="resumo-simulacao" style="margin-top:20px;">
+        <div><span class="lbl">Liberação Cartão de Crédito</span> <span id="totCC">R$ 0,00</span></div>
+        <div><span class="lbl">Liberação Cartão Benefício</span> <span id="totCB">R$ 0,00</span></div>
+        <div><span class="lbl">Empréstimo Consignável</span> <span id="totEMP">R$ 0,00</span></div>
+        <div style="margin-top:8px; font-size:18px;"><span class="lbl">Total Operação</span> <strong id="totGeral" style="color:var(--gold-soft);">R$ 0,00</strong></div>
+      </div>
+
+      <button class="btn" id="btnSimular" style="margin-top:16px;">Simular e gravar</button>
+      <div class="error-msg" id="simuladorErro"></div>
+      <div class="hint" id="simulacaoStatus" style="color:var(--success);"></div>
     </div>
 
-    <!-- ---- ABA: DADOS CADASTRAIS ---- -->
-    <div class="tab-panel ativa" id="tab-cadastrais">
+    <!-- ===== 2. CADASTRO (endereço, contato, dados bancários) ===== -->
+    <div class="card" id="secaoCadastro">
+      <h2 style="margin-top:0;"><span class="step-num">2</span> Cadastro do cliente</h2>
       <p class="hint" style="margin-top:0;">Necessário pra fechar a venda — é o que vai ser digitado na FUNÇÃO.</p>
 
       <p class="hint" style="margin-bottom:6px;"><strong>Endereço</strong></p>
@@ -105,49 +197,67 @@
       <div class="hint" id="cadastroStatus"></div>
     </div>
 
-    <!-- ---- ABA: OBSERVAÇÕES ---- -->
-    <div class="tab-panel" id="tab-observacoes">
-      <h2 style="margin-top:0;">Histórico de contatos</h2>
-      <div class="table-wrap" style="margin-bottom:20px;">
-        <table>
-          <thead><tr><th>Data</th><th>Resultado</th><th>Observação</th></tr></thead>
-          <tbody id="tbodyObservacoes"></tbody>
-        </table>
-      </div>
-
-      <h2>Nova tabulação (quando não é venda)</h2>
-      <div class="field">
-        <label>Resultado do contato</label>
-        <select id="resultado">
-          <option value="">Selecione...</option>
-          <option value="nao_atende">Não atende</option>
-          <option value="sem_interesse">Sem interesse</option>
-          <option value="recusou">Recusou</option>
-          <option value="vai_pensar">Vai pensar</option>
-          <option value="reagendar">Reagendar</option>
-          <option value="numero_errado">Número errado</option>
-        </select>
-      </div>
-      <div class="field hidden" id="campoReagendar">
-        <label>Reagendar para</label>
-        <input type="datetime-local" id="reagendadoPara">
-      </div>
-      <div class="field"><label>Observação (opcional)</label><textarea id="observacao" rows="2"></textarea></div>
-      <button class="btn secondary" id="btnSalvarTabulacao">Salvar tabulação</button>
-      <div class="hint" id="tabulacaoStatus"></div>
-    </div>
-
-    <!-- ---- ABA: DOCUMENTOS ---- -->
-    <div class="tab-panel" id="tab-documentos">
-      <h2 style="margin-top:0;">Documentos do cliente (PDF ou JPEG)</h2>
+    <!-- ===== 3. DOCUMENTOS ===== -->
+    <div class="card" id="secaoDocumentos">
+      <h2 style="margin-top:0;"><span class="step-num">3</span> Documentos do cliente (PDF ou JPEG)</h2>
       <div id="listaDocumentos" style="margin-bottom:14px;"></div>
       <input type="file" id="arquivoDocumento" accept=".pdf,.jpg,.jpeg">
       <button class="btn secondary" id="btnEnviarDocumento" style="margin-left:10px;">Enviar documento</button>
       <div class="hint" id="documentoStatus"></div>
     </div>
 
-    <!-- ---- ABA: PESSOAS RELACIONADAS ---- -->
-    <div class="tab-panel" id="tab-relacionadas">
+    <!-- ===== 4. FINALIZAR ATENDIMENTO ===== -->
+    <div class="card" id="secaoFinalizar">
+      <h2 style="margin-top:0;"><span class="step-num">4</span> Finalizar atendimento</h2>
+
+      <div class="finalizar-bloco">
+        <h3 style="color:var(--success);">✅ Fechou negócio</h3>
+        <div class="resumo-simulacao" id="resumoSimulacao">
+          <span class="hint">Simule a proposta acima primeiro.</span>
+        </div>
+        <p class="hint" id="avisoDocumentos" style="color:var(--gold-soft);"></p>
+        <button class="btn" id="btnSalvarVenda">Tabular como VENDA</button>
+        <div class="error-msg" id="vendaErro"></div>
+        <div id="vendaSucesso" class="hidden" style="color:var(--success); font-weight:bold; margin-top:10px;">
+          ✓ Proposta salva e disponível para o administrador exportar.
+        </div>
+      </div>
+
+      <div class="finalizar-bloco">
+        <h3 style="color:var(--gold-soft);">🔁 Ainda não fechou</h3>
+        <p class="hint" style="margin-top:0;">Fica com você (não volta pra fila). Se passar de 3 dias sem novo contato, aparece pro admin liberar.</p>
+        <div class="field">
+          <label>Resultado do contato</label>
+          <select id="resultado">
+            <option value="">Selecione...</option>
+            <option value="nao_atende">Não atende</option>
+            <option value="vai_pensar">Vai pensar</option>
+            <option value="reagendar">Reagendar</option>
+            <option value="sem_interesse">Sem interesse (sai da base)</option>
+            <option value="recusou">Recusou (sai da base)</option>
+            <option value="numero_errado">Número errado (sai da base)</option>
+          </select>
+        </div>
+        <div class="field hidden" id="campoReagendar">
+          <label>Reagendar para</label>
+          <input type="datetime-local" id="reagendadoPara">
+        </div>
+        <div class="field"><label>Observação (opcional)</label><textarea id="observacao" rows="2"></textarea></div>
+        <button class="btn secondary" id="btnSalvarTabulacao">Tabular como NEGOCIAÇÃO</button>
+        <div class="hint" id="tabulacaoStatus"></div>
+      </div>
+
+      <h3>Histórico de contatos</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Data</th><th>Resultado</th><th>Observação</th></tr></thead>
+          <tbody id="tbodyObservacoes"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ===== PESSOAS RELACIONADAS ===== -->
+    <div class="card" id="secaoRelacionadas">
       <h2 style="margin-top:0;">Pessoas relacionadas</h2>
       <p class="hint" style="margin-top:0;">Referências do cliente — parente, contato de recado, etc.</p>
       <div class="table-wrap" style="margin-bottom:20px;">
@@ -163,121 +273,6 @@
       </div>
       <button class="btn secondary" id="btnSalvarRelacionada">Adicionar</button>
       <div class="hint" id="relacionadaStatus"></div>
-    </div>
-
-    <!-- ===== PASSO 1: SIMULAR ===== -->
-    <div class="card wizard-step ativo" id="stepSimular">
-      <h2><span class="step-num">1</span> Simular proposta</h2>
-      <div class="field" style="max-width:200px;"><label>Prazo (meses)</label><select id="simPrazo"></select></div>
-      <p class="hint">Cada linha abaixo tem seu próprio convênio e tabela — pode combinar convênios diferentes na mesma operação.</p>
-
-      <!-- CARTÃO DE CRÉDITO -->
-      <h2 style="margin-top:20px;">Cartão de Crédito</h2>
-      <table class="tabela-sim">
-        <thead><tr><th></th><th>Credor</th><th>Dívida</th><th>Parcela</th><th>Convênio / Tabela</th><th>Liberação</th><th>Contrato</th></tr></thead>
-        <tbody>
-          <tr>
-            <td><input type="checkbox" class="sim-incluir" data-produto="cartao_credito" data-tipo="amortizacao"></td>
-            <td><input type="text" class="sim-credor" placeholder="Ex: BMG" data-produto="cartao_credito" data-tipo="amortizacao"></td>
-            <td><input type="number" step="0.01" class="sim-divida" value="0" data-produto="cartao_credito" data-tipo="amortizacao"></td>
-            <td><input type="number" step="0.01" class="sim-parcela" value="0" data-produto="cartao_credito" data-tipo="amortizacao"></td>
-            <td>
-              <select class="sim-convenio" data-produto="cartao_credito" data-tipo="amortizacao"></select>
-              <select class="sim-tabela" data-produto="cartao_credito" data-tipo="amortizacao"></select>
-            </td>
-            <td class="sim-liberacao" data-produto="cartao_credito" data-tipo="amortizacao">R$ 0,00</td>
-            <td class="sim-contrato" data-produto="cartao_credito" data-tipo="amortizacao">R$ 0,00</td>
-          </tr>
-          <tr>
-            <td><input type="checkbox" class="sim-incluir" data-produto="cartao_credito" data-tipo="margem"></td>
-            <td class="hint">Margem nova</td>
-            <td class="hint">-</td>
-            <td><input type="number" step="0.01" class="sim-parcela" value="0" data-produto="cartao_credito" data-tipo="margem"></td>
-            <td>
-              <select class="sim-convenio" data-produto="cartao_credito" data-tipo="margem"></select>
-              <select class="sim-tabela" data-produto="cartao_credito" data-tipo="margem"></select>
-            </td>
-            <td class="sim-liberacao" data-produto="cartao_credito" data-tipo="margem">R$ 0,00</td>
-            <td class="sim-contrato" data-produto="cartao_credito" data-tipo="margem">R$ 0,00</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <!-- CARTÃO BENEFÍCIO -->
-      <h2 style="margin-top:20px;">Cartão Benefício</h2>
-      <table class="tabela-sim">
-        <thead><tr><th></th><th>Credor</th><th>Dívida</th><th>Parcela</th><th>Convênio / Tabela</th><th>Liberação</th><th>Contrato</th></tr></thead>
-        <tbody>
-          <tr>
-            <td><input type="checkbox" class="sim-incluir" data-produto="cartao_beneficio" data-tipo="amortizacao"></td>
-            <td><input type="text" class="sim-credor" placeholder="Ex: BMG" data-produto="cartao_beneficio" data-tipo="amortizacao"></td>
-            <td><input type="number" step="0.01" class="sim-divida" value="0" data-produto="cartao_beneficio" data-tipo="amortizacao"></td>
-            <td><input type="number" step="0.01" class="sim-parcela" value="0" data-produto="cartao_beneficio" data-tipo="amortizacao"></td>
-            <td>
-              <select class="sim-convenio" data-produto="cartao_beneficio" data-tipo="amortizacao"></select>
-              <select class="sim-tabela" data-produto="cartao_beneficio" data-tipo="amortizacao"></select>
-            </td>
-            <td class="sim-liberacao" data-produto="cartao_beneficio" data-tipo="amortizacao">R$ 0,00</td>
-            <td class="sim-contrato" data-produto="cartao_beneficio" data-tipo="amortizacao">R$ 0,00</td>
-          </tr>
-          <tr>
-            <td><input type="checkbox" class="sim-incluir" data-produto="cartao_beneficio" data-tipo="margem"></td>
-            <td class="hint">Margem nova</td>
-            <td class="hint">-</td>
-            <td><input type="number" step="0.01" class="sim-parcela" value="0" data-produto="cartao_beneficio" data-tipo="margem"></td>
-            <td>
-              <select class="sim-convenio" data-produto="cartao_beneficio" data-tipo="margem"></select>
-              <select class="sim-tabela" data-produto="cartao_beneficio" data-tipo="margem"></select>
-            </td>
-            <td class="sim-liberacao" data-produto="cartao_beneficio" data-tipo="margem">R$ 0,00</td>
-            <td class="sim-contrato" data-produto="cartao_beneficio" data-tipo="margem">R$ 0,00</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <!-- EMPRÉSTIMO CONSIGNÁVEL -->
-      <h2 style="margin-top:20px;">Empréstimo Consignável</h2>
-      <table class="tabela-sim">
-        <thead><tr><th></th><th>Dívida</th><th>Parcela</th><th>Convênio / Tabela</th><th>Liberação</th><th>Contrato</th></tr></thead>
-        <tbody>
-          <tr>
-            <td><input type="checkbox" class="sim-incluir" data-produto="emprestimo" data-tipo="margem"></td>
-            <td><input type="number" step="0.01" class="sim-divida" value="0" data-produto="emprestimo" data-tipo="margem"></td>
-            <td><input type="number" step="0.01" class="sim-parcela" value="0" data-produto="emprestimo" data-tipo="margem"></td>
-            <td>
-              <select class="sim-convenio" data-produto="emprestimo" data-tipo="margem"></select>
-              <select class="sim-tabela" data-produto="emprestimo" data-tipo="margem"></select>
-            </td>
-            <td class="sim-liberacao" data-produto="emprestimo" data-tipo="margem">R$ 0,00</td>
-            <td class="sim-contrato" data-produto="emprestimo" data-tipo="margem">R$ 0,00</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <!-- TOTAL OPERAÇÃO -->
-      <div class="resumo-simulacao" style="margin-top:20px;">
-        <div><span class="lbl">Liberação Cartão de Crédito</span> <span id="totCC">R$ 0,00</span></div>
-        <div><span class="lbl">Liberação Cartão Benefício</span> <span id="totCB">R$ 0,00</span></div>
-        <div><span class="lbl">Empréstimo Consignável</span> <span id="totEMP">R$ 0,00</span></div>
-        <div style="margin-top:8px; font-size:18px;"><span class="lbl">Total Operação</span> <strong id="totGeral" style="color:var(--gold-soft);">R$ 0,00</strong></div>
-      </div>
-
-      <button class="btn" id="btnSimular" style="margin-top:16px;">Simular e gravar</button>
-      <div class="error-msg" id="simuladorErro"></div>
-    </div>
-
-    <!-- ===== PASSO 2: CADASTRAR VENDA ===== -->
-    <div class="card wizard-step" id="stepVenda">
-      <h2><span class="step-num">2</span> Cadastrar venda</h2>
-      <p class="hint" style="margin-top:0;">Dados vindos da simulação gravada.</p>
-      <div class="resumo-simulacao" id="resumoSimulacao"></div>
-
-      <p class="hint" id="avisoDocumentos" style="color:var(--gold-soft);"></p>
-      <button class="btn" id="btnSalvarVenda">Salvar proposta e enviar ao admin</button>
-      <div class="error-msg" id="vendaErro"></div>
-      <div id="vendaSucesso" class="hidden" style="color:var(--success); font-weight:bold; margin-top:10px;">
-        ✓ Proposta salva e disponível para o administrador exportar.
-      </div>
     </div>
   </div>
 
@@ -300,12 +295,6 @@
     let ULTIMOS_ITENS = [];
     let DOCUMENTOS = [];
     let COEFICIENTES = {};
-
-    // ---------- Abas ----------
-    function mudarAba(nome) {
-      document.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("ativa", b.dataset.tab === nome));
-      document.querySelectorAll(".tab-panel").forEach((p) => p.classList.toggle("ativa", p.id === "tab-" + nome));
-    }
 
     async function carregarCoeficientes() {
       const { data, error } = await supabaseClient.from("coeficientes").select("*");
@@ -549,20 +538,23 @@
       const btnVenda = document.getElementById("btnSalvarVenda");
       const faltaDocs = DOCUMENTOS.length === 0;
       const faltaCadastro = !cadastroCompleto();
+      const faltaSimulacao = !ULTIMA_SIMULACAO;
 
-      if (faltaDocs && faltaCadastro) {
-        aviso.textContent = "Complete o cadastro (aba \"Dados Cadastrais\") e anexe pelo menos 1 documento (aba \"Documentos Digitalizados\") antes de salvar a proposta.";
+      if (faltaSimulacao) {
+        aviso.textContent = "Simule a proposta (passo 1) antes de tabular como venda.";
+      } else if (faltaDocs && faltaCadastro) {
+        aviso.textContent = "Complete o cadastro (passo 2) e anexe pelo menos 1 documento (passo 3) antes de salvar a proposta.";
       } else if (faltaCadastro) {
-        aviso.textContent = "Complete o cadastro do cliente na aba \"Dados Cadastrais\" antes de salvar a proposta.";
+        aviso.textContent = "Complete o cadastro do cliente (passo 2) antes de salvar a proposta.";
       } else if (faltaDocs) {
-        aviso.textContent = "Anexe pelo menos 1 documento na aba \"Documentos Digitalizados\" antes de salvar a proposta.";
+        aviso.textContent = "Anexe pelo menos 1 documento (passo 3) antes de salvar a proposta.";
       } else {
         aviso.textContent = `Cadastro completo e ${DOCUMENTOS.length} documento(s) anexado(s). Pronto pra salvar.`;
       }
-      btnVenda.disabled = faltaDocs || faltaCadastro;
+      btnVenda.disabled = faltaDocs || faltaCadastro || faltaSimulacao;
     }
 
-    // ---------- Observações (histórico + nova tabulação) ----------
+    // ---------- Histórico de contatos ----------
     async function carregarObservacoes() {
       const tbody = document.getElementById("tbodyObservacoes");
       const { data, error } = await supabaseClient
@@ -609,8 +601,9 @@
       LEAD.status = novoStatus;
       document.getElementById("statusBadge").className = "badge " + novoStatus;
       document.getElementById("statusBadge").textContent = STATUS_LABEL[novoStatus];
+      document.getElementById("btnSairCliente").classList.toggle("hidden", novoStatus !== "em_andamento");
 
-      statusEl.style.color = "var(--success)"; statusEl.textContent = "Tabulação salva.";
+      statusEl.style.color = "var(--success)"; statusEl.textContent = "Tabulado como negociação.";
       document.getElementById("resultado").value = "";
       document.getElementById("observacao").value = "";
       document.getElementById("reagendadoPara").value = "";
@@ -664,10 +657,11 @@
       carregarRelacionadas();
     }
 
-    // ---------- Passo 1: Simular ----------
+    // ---------- 1. Simular ----------
     document.getElementById("btnSimular").addEventListener("click", async () => {
       const erroEl = document.getElementById("simuladorErro");
-      erroEl.textContent = "";
+      const statusEl = document.getElementById("simulacaoStatus");
+      erroEl.textContent = ""; statusEl.textContent = "";
       const prazo = parseInt(document.getElementById("simPrazo").value, 10);
 
       const calculo = recalcular();
@@ -694,10 +688,11 @@
 
       ULTIMA_SIMULACAO = simulacao;
       ULTIMOS_ITENS = calculo.itens;
-      liberarPassoVenda();
+      statusEl.textContent = "Simulação gravada. Continue para o cadastro e documentos, depois finalize abaixo.";
+      atualizarResumoVenda();
     });
 
-    function liberarPassoVenda() {
+    function atualizarResumoVenda() {
       const linhas = ULTIMOS_ITENS.map((i) => `
         <div>
           <span class="lbl">${PRODUTO_LABEL[i.produto]}${i.tipo === "amortizacao" ? " — Amortização" + (i.credor ? " (" + i.credor + ")" : "") : " — Margem nova"}</span>
@@ -712,17 +707,15 @@
       `;
       document.getElementById("vendaSucesso").classList.add("hidden");
       atualizarAvisoDocumentos();
-      document.getElementById("stepVenda").classList.add("ativo");
-      document.getElementById("stepVenda").scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
-    // ---------- Passo 2: Cadastrar venda ----------
+    // ---------- 4. Finalizar: Tabular como venda ----------
     document.getElementById("btnSalvarVenda").addEventListener("click", async () => {
       const erroEl = document.getElementById("vendaErro");
       erroEl.textContent = "";
-      if (!ULTIMA_SIMULACAO) { erroEl.textContent = "Simule a proposta primeiro."; return; }
-      if (!cadastroCompleto()) { erroEl.textContent = "Complete o cadastro do cliente (aba \"Dados Cadastrais\") antes de salvar."; mudarAba("cadastrais"); return; }
-      if (DOCUMENTOS.length === 0) { erroEl.textContent = "Anexe ao menos 1 documento (aba \"Documentos Digitalizados\") antes de salvar."; mudarAba("documentos"); return; }
+      if (!ULTIMA_SIMULACAO) { erroEl.textContent = "Simule a proposta primeiro (passo 1)."; document.getElementById("secaoSimular").scrollIntoView({ behavior: "smooth" }); return; }
+      if (!cadastroCompleto()) { erroEl.textContent = "Complete o cadastro do cliente (passo 2) antes de salvar."; document.getElementById("secaoCadastro").scrollIntoView({ behavior: "smooth" }); return; }
+      if (DOCUMENTOS.length === 0) { erroEl.textContent = "Anexe ao menos 1 documento (passo 3) antes de salvar."; document.getElementById("secaoDocumentos").scrollIntoView({ behavior: "smooth" }); return; }
 
       const btn = document.getElementById("btnSalvarVenda");
       btn.disabled = true; btn.textContent = "Salvando...";
@@ -735,7 +728,7 @@
         saldo_devedor: ULTIMA_SIMULACAO.saldo_devedor,
         valor_contrato: ULTIMA_SIMULACAO.valor_contrato, valor: ULTIMA_SIMULACAO.troco,
       });
-      if (erroProp) { erroEl.textContent = "Erro ao salvar proposta: " + erroProp.message; btn.disabled = false; btn.textContent = "Salvar proposta e enviar ao admin"; return; }
+      if (erroProp) { erroEl.textContent = "Erro ao salvar proposta: " + erroProp.message; btn.disabled = false; btn.textContent = "Tabular como VENDA"; return; }
 
       await supabaseClient.from("tabulacoes").insert({
         lead_id: LEAD.id, consultor_id: PERFIL.id, resultado: "vendeu", observacao: null,
@@ -744,8 +737,9 @@
       LEAD.status = "tabulado";
       document.getElementById("statusBadge").className = "badge tabulado";
       document.getElementById("statusBadge").textContent = "Tabulado";
+      document.getElementById("btnSairCliente").classList.add("hidden");
 
-      btn.disabled = false; btn.textContent = "Salvar proposta e enviar ao admin";
+      btn.disabled = false; btn.textContent = "Tabular como VENDA";
       document.getElementById("vendaSucesso").classList.remove("hidden");
       carregarObservacoes();
     });
