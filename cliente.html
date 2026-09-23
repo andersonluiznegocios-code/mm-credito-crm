@@ -609,6 +609,7 @@
       document.getElementById("reagendadoPara").value = "";
       document.getElementById("campoReagendar").classList.add("hidden");
       carregarObservacoes();
+      setTimeout(() => { window.location.href = "consultor.html"; }, 1800);
     });
 
     // ---------- Pessoas relacionadas ----------
@@ -742,6 +743,7 @@
       btn.disabled = false; btn.textContent = "Tabular como VENDA";
       document.getElementById("vendaSucesso").classList.remove("hidden");
       carregarObservacoes();
+      setTimeout(() => { window.location.href = "consultor.html"; }, 1800);
     });
 
     // ---------- Sair do cliente (devolve pra fila) ----------
