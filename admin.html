@@ -52,7 +52,18 @@
       <div class="error-msg" id="erroCriarConsultor"></div>
     </div>
 
-    <h2>3. Histórico de sorteios</h2>
+    <h2>3. Negociações em andamento</h2>
+    <div class="card">
+      <p class="hint" style="margin-top:0;">Clientes que algum consultor está negociando (tabulou como "negociação", não como venda). Se passar de 3 dias sem novo contato, aparece destacado — você pode liberar de volta pra fila.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Cliente</th><th>Consultor</th><th>Última atividade</th><th>Tempo parado</th><th></th></tr></thead>
+          <tbody id="tbodyNegociacoes"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <h2>4. Histórico de sorteios</h2>
     <div class="card">
       <p class="hint" style="margin-top:0;">Rastro de qual consultor sorteou qual cliente, com data e horário.</p>
       <div class="table-wrap">
@@ -64,7 +75,7 @@
       <button class="btn secondary hidden" id="btnMaisSorteios" style="margin-top:12px;">Carregar mais</button>
     </div>
 
-    <h2>4. Tabulações recentes</h2>
+    <h2>5. Tabulações recentes</h2>
     <div class="card">
       <div class="table-wrap">
         <table>
@@ -75,14 +86,14 @@
       <button class="btn secondary hidden" id="btnMaisTabulacoes" style="margin-top:12px;">Carregar mais</button>
     </div>
 
-    <h2>5. Exportar propostas para digitar na FUNÇÃO</h2>
+    <h2>6. Exportar propostas para digitar na FUNÇÃO</h2>
     <div class="card">
       <div id="propostasInfo" style="margin-bottom:12px; color:var(--muted);"></div>
       <button class="btn" id="btnExportar">Baixar Excel das propostas pendentes</button>
       <div class="error-msg" id="erroExport"></div>
     </div>
 
-    <h2>6. Documentos enviados pelos clientes</h2>
+    <h2>7. Documentos enviados pelos clientes</h2>
     <div class="card">
       <p class="hint" style="margin-top:0;">Todos os PDFs/JPEGs anexados pelos consultores. Confira antes de digitar na FUNÇÃO.</p>
       <div class="table-wrap">
@@ -94,7 +105,7 @@
       <button class="btn secondary hidden" id="btnMaisDocumentos" style="margin-top:12px;">Carregar mais</button>
     </div>
 
-    <h2>7. Coeficientes (tabela de taxas da MK)</h2>
+    <h2>8. Coeficientes (tabela de taxas da MK)</h2>
     <div class="card">
       <p class="hint" style="margin-top:0;">Usado no cálculo de simulação (valor da parcela ÷ coeficiente = valor de contrato). Atualize aqui sempre que a MK publicar tabela nova — não precisa mexer em código.</p>
       <div class="table-wrap">
@@ -115,7 +126,7 @@
       <button class="btn" id="btnAdicionarCoeficiente">Adicionar</button>
     </div>
 
-    <h2>8. Baixar tudo</h2>
+    <h2>9. Baixar tudo</h2>
     <div class="card">
       <p class="hint" style="margin-top:0;">Gera um Excel com todas as abas: clientes, tabulações, propostas, sorteios e documentos.</p>
       <button class="btn secondary" id="btnExportarTudo">Baixar Excel completo</button>
@@ -136,12 +147,14 @@
     let SORTEIOS = [];
     let COEFICIENTES = [];
     let DOCUMENTOS = [];
+    let TABS_EM_ANDAMENTO = [];
+    let SORTEIOS_EM_ANDAMENTO = [];
     let LIMITE_SORTEIOS = 25;
     let LIMITE_TABULACOES = 25;
     let LIMITE_DOCUMENTOS = 25;
 
     async function carregarTudo() {
-      const [{ data: consultores }, { data: leads }, { data: tabulacoes }, { data: propostas }, { data: propostasTodas }, { data: sorteios }, { data: coeficientes }, { data: documentos }] = await Promise.all([
+      const [{ data: consultores }, { data: leads }, { data: tabulacoes }, { data: propostas }, { data: propostasTodas }, { data: sorteios }, { data: coeficientes }, { data: documentos }, { data: tabsEmAndamento }, { data: sorteiosEmAndamento }] = await Promise.all([
         supabaseClient.from("profiles").select("*").eq("role", "consultor").order("nome"),
         supabaseClient.from("leads").select("*"),
         supabaseClient.from("tabulacoes").select("*, leads(nome, cpf), profiles(nome)").order("criado_em", { ascending: false }).limit(LIMITE_TABULACOES),
@@ -150,6 +163,8 @@
         supabaseClient.from("sorteios").select("*, leads(nome, cpf), profiles(nome)").order("sorteado_em", { ascending: false }).limit(LIMITE_SORTEIOS),
         supabaseClient.from("coeficientes").select("*").order("convenio").order("tabela"),
         supabaseClient.from("documentos").select("*, leads(nome, cpf), profiles(nome)").order("criado_em", { ascending: false }).limit(LIMITE_DOCUMENTOS),
+        supabaseClient.from("tabulacoes").select("lead_id, criado_em, leads!inner(status)").eq("leads.status", "em_andamento").order("criado_em", { ascending: false }),
+        supabaseClient.from("sorteios").select("lead_id, sorteado_em, leads!inner(status)").eq("leads.status", "em_andamento"),
       ]);
       CONSULTORES = consultores || [];
       LEADS = leads || [];
@@ -159,6 +174,8 @@
       SORTEIOS = sorteios || [];
       COEFICIENTES = coeficientes || [];
       DOCUMENTOS = documentos || [];
+      TABS_EM_ANDAMENTO = tabsEmAndamento || [];
+      SORTEIOS_EM_ANDAMENTO = sorteiosEmAndamento || [];
       renderStats();
       renderConsultores();
       renderTabulacoes();
@@ -166,10 +183,57 @@
       renderPropostasInfo();
       renderCoeficientes();
       renderDocumentos();
+      renderNegociacoes();
 
       document.getElementById("btnMaisSorteios").classList.toggle("hidden", SORTEIOS.length < LIMITE_SORTEIOS);
       document.getElementById("btnMaisTabulacoes").classList.toggle("hidden", TABULACOES.length < LIMITE_TABULACOES);
       document.getElementById("btnMaisDocumentos").classList.toggle("hidden", DOCUMENTOS.length < LIMITE_DOCUMENTOS);
+    }
+
+    function renderNegociacoes() {
+      const tbody = document.getElementById("tbodyNegociacoes");
+      const agora = new Date();
+
+      // última atividade por lead: tabulação mais recente, senão a data do sorteio
+      const ultimaTabPorLead = {};
+      for (const t of TABS_EM_ANDAMENTO) {
+        if (!ultimaTabPorLead[t.lead_id]) ultimaTabPorLead[t.lead_id] = t.criado_em;
+      }
+      const sorteioPorLead = {};
+      for (const s of SORTEIOS_EM_ANDAMENTO) sorteioPorLead[s.lead_id] = s.sorteado_em;
+
+      const linhas = LEADS.filter((l) => l.status === "em_andamento").map((l) => {
+        const ultima = ultimaTabPorLead[l.id] || sorteioPorLead[l.id];
+        const dias = ultima ? Math.floor((agora - new Date(ultima)) / (1000 * 60 * 60 * 24)) : null;
+        const consultor = CONSULTORES.find((c) => c.id === l.atribuido_a);
+        return { lead: l, ultima, dias, consultorNome: consultor ? consultor.nome : "-" };
+      }).sort((a, b) => (b.dias || 0) - (a.dias || 0));
+
+      if (linhas.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="color:var(--muted);">Nenhuma negociação em andamento no momento.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = linhas.map(({ lead, ultima, dias, consultorNome }) => `
+        <tr>
+          <td>${lead.nome || "(sem nome)"}</td>
+          <td>${consultorNome}</td>
+          <td>${ultima ? new Date(ultima).toLocaleDateString("pt-BR") : "-"}</td>
+          <td style="${dias >= 3 ? 'color:var(--danger); font-weight:bold;' : ''}">${dias === null ? "-" : dias + (dias === 1 ? " dia" : " dias")}${dias >= 3 ? " ⚠️" : ""}</td>
+          <td><button class="btn secondary" onclick="liberarUmCliente(${lead.id}, '${(lead.nome || "").replace(/'/g, "\\'")}')">Liberar pro sorteio</button></td>
+        </tr>
+      `).join("");
+    }
+
+    async function liberarUmCliente(leadId, nome) {
+      if (!confirm(`Liberar "${nome}" de volta pra fila? Qualquer consultor poderá sortear ele novamente.`)) return;
+      const { error } = await supabaseClient
+        .from("leads")
+        .update({ atribuido_a: null, status: "novo" })
+        .eq("id", leadId)
+        .eq("status", "em_andamento");
+      if (error) { alert("Erro ao liberar: " + error.message); return; }
+      carregarTudo();
     }
 
     document.getElementById("btnMaisSorteios").addEventListener("click", () => { LIMITE_SORTEIOS += 25; carregarTudo(); });
@@ -416,28 +480,56 @@
     });
 
     // ---------- 5. Exportar propostas ----------
-    document.getElementById("btnExportar").addEventListener("click", () => {
+    document.getElementById("btnExportar").addEventListener("click", async () => {
       const erroEl = document.getElementById("erroExport");
       erroEl.textContent = "";
       if (PROPOSTAS_PENDENTES.length === 0) { erroEl.textContent = "Não há propostas pendentes."; return; }
 
-      const linhas = PROPOSTAS_PENDENTES.map((p) => {
+      const btn = document.getElementById("btnExportar");
+      btn.disabled = true; btn.textContent = "Gerando...";
+
+      const simulacaoIds = PROPOSTAS_PENDENTES.map((p) => p.simulacao_id).filter(Boolean);
+      const { data: itens, error: erroItens } = await supabaseClient
+        .from("simulacao_itens").select("*").in("simulacao_id", simulacaoIds);
+
+      btn.disabled = false; btn.textContent = "Baixar Excel das propostas pendentes";
+      if (erroItens) { erroEl.textContent = "Erro ao buscar itens: " + erroItens.message; return; }
+
+      // uma linha por ITEM (cartão/empréstimo) da proposta — é o que se digita tela por tela na FUNÇÃO
+      const linhas = [];
+      for (const p of PROPOSTAS_PENDENTES) {
         const l = p.leads || {};
-        return {
+        const itensDaProposta = (itens || []).filter((i) => i.simulacao_id === p.simulacao_id);
+        const base = {
           "Nome do Cliente": l.nome, "CPF": l.cpf,
           "Consultor": p.profiles ? p.profiles.nome : "",
-          "Produtos": p.produtos,
           "Prazo (meses)": p.prazo,
-          "Valor de Contrato": p.valor_contrato,
-          "Saldo Devedor": p.saldo_devedor,
-          "Troco (Valor Liberado)": p.valor,
           "CEP": l.cep, "Logradouro": l.logradouro, "Número": l.numero, "Complemento": l.complemento,
           "Bairro": l.bairro, "Cidade": l.cidade, "UF": l.uf,
           "Telefone": l.telefone_contato, "E-mail": l.email,
           "Banco": l.banco, "Agência": l.agencia, "Conta": l.conta, "Tipo de Conta": l.tipo_conta, "Chave PIX": l.chave_pix,
           "Data da Proposta": new Date(p.criado_em).toLocaleDateString("pt-BR"),
         };
-      });
+        if (itensDaProposta.length === 0) {
+          // fallback: proposta antiga sem itens detalhados (de antes dessa mudança)
+          linhas.push({ ...base, "Produto": p.produtos, "Valor de Contrato Total": p.valor_contrato, "Saldo Devedor Total": p.saldo_devedor, "Liberação Total": p.valor });
+        } else {
+          for (const i of itensDaProposta) {
+            linhas.push({
+              ...base,
+              "Produto": PRODUTO_LABEL[i.produto] || i.produto,
+              "Tipo": i.tipo === "amortizacao" ? "Amortização" : "Margem nova",
+              "Credor": i.credor || "",
+              "Convênio": i.convenio,
+              "Tabela": i.tabela,
+              "Dívida": i.divida,
+              "Parcela": i.parcela,
+              "Valor de Contrato": i.valor_contrato,
+              "Liberação": i.troco,
+            });
+          }
+        }
+      }
 
       const ws = XLSX.utils.json_to_sheet(linhas);
       const wb = XLSX.utils.book_new();
