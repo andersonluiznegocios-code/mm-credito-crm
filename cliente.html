@@ -59,6 +59,10 @@
       <p class="hint">Cada linha abaixo tem seu próprio convênio e tabela — pode combinar convênios diferentes na mesma operação.</p>
 
       <h2 style="margin-top:20px;">Cartão de Crédito</h2>
+      <label class="hint" style="display:block; margin-bottom:8px;">
+        <input type="checkbox" class="sim-agrupar" data-produto="cartao_credito" style="width:16px; height:16px; vertical-align:middle;">
+        Agrupar amortização + margem em uma linha só (uma parcela)
+      </label>
       <table class="tabela-sim">
         <thead><tr><th></th><th>Credor</th><th>Dívida</th><th>Parcela</th><th>Convênio / Tabela</th><th>Liberação</th><th>Contrato</th></tr></thead>
         <tbody>
@@ -90,6 +94,10 @@
       </table>
 
       <h2 style="margin-top:20px;">Cartão Benefício</h2>
+      <label class="hint" style="display:block; margin-bottom:8px;">
+        <input type="checkbox" class="sim-agrupar" data-produto="cartao_beneficio" style="width:16px; height:16px; vertical-align:middle;">
+        Agrupar amortização + margem em uma linha só (uma parcela)
+      </label>
       <table class="tabela-sim">
         <thead><tr><th></th><th>Credor</th><th>Dívida</th><th>Parcela</th><th>Convênio / Tabela</th><th>Liberação</th><th>Contrato</th></tr></thead>
         <tbody>
@@ -331,17 +339,31 @@
       el.addEventListener("change", recalcular);
     });
 
+    // Agrupar amortização + margem numa linha só (Cartão de Crédito / Cartão Benefício)
+    const AGRUPADOS = { cartao_credito: false, cartao_beneficio: false };
+    document.querySelectorAll(".sim-agrupar").forEach((chkAgrupar) => {
+      chkAgrupar.addEventListener("change", () => {
+        const produto = chkAgrupar.dataset.produto;
+        AGRUPADOS[produto] = chkAgrupar.checked;
+        const linhaMargem = document.querySelector(`.sim-incluir[data-produto="${produto}"][data-tipo="margem"]`).closest("tr");
+        const linhaAmort = document.querySelector(`.sim-incluir[data-produto="${produto}"][data-tipo="amortizacao"]`).closest("tr");
+        linhaMargem.style.display = chkAgrupar.checked ? "none" : "";
+        // ao agrupar, a linha de amortização passa a representar as duas juntas
+        linhaAmort.querySelector("td:nth-child(2)").firstChild.placeholder = chkAgrupar.checked ? "Ex: BMG (opcional)" : "Ex: BMG";
+        recalcular();
+      });
+    });
+
     // Retorna a lista de linhas marcadas com "Incluir" e seus valores calculados
     function recalcular() {
       const itens = [];
       let totCC = 0, totCB = 0, totEMP = 0;
 
-      document.querySelectorAll(".sim-incluir").forEach((chk) => {
-        const produto = chk.dataset.produto;
-        const tipo = chk.dataset.tipo;
+      function calcularLinha(produto, tipo, dividaExtra, parcelaExtra) {
         const linhaSel = `[data-produto="${produto}"][data-tipo="${tipo}"]`;
-        const divida = parseFloat((document.querySelector(".sim-divida" + linhaSel) || {}).value) || 0;
-        const parcela = parseFloat(document.querySelector(".sim-parcela" + linhaSel).value) || 0;
+        const chk = document.querySelector(".sim-incluir" + linhaSel);
+        const divida = (parseFloat((document.querySelector(".sim-divida" + linhaSel) || {}).value) || 0) + (dividaExtra || 0);
+        const parcela = (parseFloat(document.querySelector(".sim-parcela" + linhaSel).value) || 0) + (parcelaExtra || 0);
         const credorEl = document.querySelector(".sim-credor" + linhaSel);
         const credor = credorEl ? credorEl.value.trim() : "";
         const convenio = document.querySelector(".sim-convenio" + linhaSel).value;
@@ -359,13 +381,41 @@
         if (tdLib) tdLib.textContent = formatBRL(liberacao);
         if (tdCon) tdCon.textContent = formatBRL(valorContrato);
 
-        if (chk.checked && coeficiente && parcela) {
-          itens.push({ produto, tipo, credor: credor || null, convenio, tabela, coeficiente, divida, parcela, valor_contrato: valorContrato, troco: liberacao });
-          if (produto === "cartao_credito") totCC += liberacao;
-          else if (produto === "cartao_beneficio") totCB += liberacao;
-          else totEMP += liberacao;
+        return { incluido: chk.checked && coeficiente && parcela, produto, tipoFinal: dividaExtra !== undefined || parcelaExtra !== undefined ? "agrupado" : tipo, credor: credor || null, convenio, tabela, coeficiente, divida, parcela, valor_contrato: valorContrato, troco: liberacao };
+      }
+
+      ["cartao_credito", "cartao_beneficio"].forEach((produto) => {
+        if (AGRUPADOS[produto]) {
+          const dividaMargem = parseFloat((document.querySelector(`.sim-divida[data-produto="${produto}"][data-tipo="margem"]`) || {}).value) || 0;
+          const parcelaMargem = parseFloat(document.querySelector(`.sim-parcela[data-produto="${produto}"][data-tipo="margem"]`).value) || 0;
+          // zera visualmente a linha de margem (está oculta) pra não contar duas vezes
+          const tdLibM = document.querySelector(`.sim-liberacao[data-produto="${produto}"][data-tipo="margem"]`);
+          const tdConM = document.querySelector(`.sim-contrato[data-produto="${produto}"][data-tipo="margem"]`);
+          if (tdLibM) tdLibM.textContent = formatBRL(0);
+          if (tdConM) tdConM.textContent = formatBRL(0);
+
+          const linha = calcularLinha(produto, "amortizacao", dividaMargem, parcelaMargem);
+          if (linha.incluido) {
+            itens.push({ produto: linha.produto, tipo: "agrupado", credor: linha.credor, convenio: linha.convenio, tabela: linha.tabela, coeficiente: linha.coeficiente, divida: linha.divida, parcela: linha.parcela, valor_contrato: linha.valor_contrato, troco: linha.troco });
+            if (produto === "cartao_credito") totCC += linha.troco; else totCB += linha.troco;
+          }
+        } else {
+          ["amortizacao", "margem"].forEach((tipo) => {
+            const linha = calcularLinha(produto, tipo);
+            if (linha.incluido) {
+              itens.push({ produto: linha.produto, tipo, credor: linha.credor, convenio: linha.convenio, tabela: linha.tabela, coeficiente: linha.coeficiente, divida: linha.divida, parcela: linha.parcela, valor_contrato: linha.valor_contrato, troco: linha.troco });
+              if (produto === "cartao_credito") totCC += linha.troco; else totCB += linha.troco;
+            }
+          });
         }
       });
+
+      // Empréstimo consignável — linha única, sempre
+      const linhaEmp = calcularLinha("emprestimo", "margem");
+      if (linhaEmp.incluido) {
+        itens.push({ produto: "emprestimo", tipo: "margem", credor: linhaEmp.credor, convenio: linhaEmp.convenio, tabela: linhaEmp.tabela, coeficiente: linhaEmp.coeficiente, divida: linhaEmp.divida, parcela: linhaEmp.parcela, valor_contrato: linhaEmp.valor_contrato, troco: linhaEmp.troco });
+        totEMP += linhaEmp.troco;
+      }
 
       document.getElementById("totCC").textContent = formatBRL(totCC);
       document.getElementById("totCB").textContent = formatBRL(totCB);
@@ -696,7 +746,7 @@
     function atualizarResumoVenda() {
       const linhas = ULTIMOS_ITENS.map((i) => `
         <div>
-          <span class="lbl">${PRODUTO_LABEL[i.produto]}${i.tipo === "amortizacao" ? " — Amortização" + (i.credor ? " (" + i.credor + ")" : "") : " — Margem nova"}</span>
+          <span class="lbl">${PRODUTO_LABEL[i.produto]}${i.tipo === "amortizacao" ? " — Amortização" + (i.credor ? " (" + i.credor + ")" : "") : i.tipo === "agrupado" ? " — Amortização + Margem (agrupado)" + (i.credor ? " (" + i.credor + ")" : "") : " — Margem nova"}</span>
           ${i.convenio} / ${i.tabela} · Parcela ${formatBRL(i.parcela)} · Dívida ${formatBRL(i.divida)} · Contrato ${formatBRL(i.valor_contrato)} · Liberação ${formatBRL(i.troco)}
         </div>`).join("");
       document.getElementById("resumoSimulacao").innerHTML = `
