@@ -452,9 +452,9 @@
         <div><span class="lbl">PMT</span><br>${formatBRL(LEAD.pmt)}</div>
         <div><span class="lbl">Telefones (base)</span><br>${(LEAD.telefones || []).join(" · ") || "-"}</div>
       `;
-      // pré-preenche a linha de margem nova do cartão de crédito com a PMT do cliente, como ponto de partida
-      const campoMargemCC = document.querySelector('.sim-parcela[data-produto="cartao_credito"][data-tipo="margem"]');
-      if (campoMargemCC) campoMargemCC.value = LEAD.pmt || 0;
+      // pré-preenche a linha de amortização do cartão de crédito com a PMT do cliente (é a parcela ANTIGA que ele já paga)
+      const campoAmortCC = document.querySelector('.sim-parcela[data-produto="cartao_credito"][data-tipo="amortizacao"]');
+      if (campoAmortCC) campoAmortCC.value = LEAD.pmt || 0;
 
       // pré-preenche o cadastro (endereço/contato/dados bancários) se já tiver algo salvo
       document.getElementById("cadCep").value = LEAD.cep || "";
