@@ -518,7 +518,7 @@
             linhas.push({
               ...base,
               "Produto": PRODUTO_LABEL[i.produto] || i.produto,
-              "Tipo": i.tipo === "amortizacao" ? "Amortização" : "Margem nova",
+              "Tipo": i.tipo === "amortizacao" ? "Amortização" : i.tipo === "agrupado" ? "Amortização + Margem (agrupado)" : "Margem nova",
               "Credor": i.credor || "",
               "Convênio": i.convenio,
               "Tabela": i.tabela,
@@ -616,7 +616,7 @@
           "Cliente": l.nome, "CPF": l.cpf, "Consultor": s.profiles ? s.profiles.nome : "",
           "Prazo (meses)": s.prazo,
           "Produto": PRODUTO_LABEL[i.produto] || i.produto,
-          "Tipo": i.tipo === "amortizacao" ? "Amortização" : "Margem nova",
+          "Tipo": i.tipo === "amortizacao" ? "Amortização" : i.tipo === "agrupado" ? "Amortização + Margem (agrupado)" : "Margem nova",
           "Credor": i.credor || "", "Convênio": i.convenio, "Tabela": i.tabela, "Coeficiente": i.coeficiente,
           "Dívida": i.divida, "Parcela": i.parcela,
           "Valor de Contrato": i.valor_contrato, "Liberação": i.troco,
