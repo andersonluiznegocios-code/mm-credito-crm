@@ -16,56 +16,90 @@
     </div>
   </div>
 
-  <div class="container">
-    <h1>Meus clientes</h1>
-    <p class="subtitle">Sorteie um novo cliente quando quiser trabalhar em alguém novo. Clique num cliente já sorteado pra abrir a tela dele.</p>
-
-    <div class="card">
-      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
-        <div id="disponiveisInfo" style="color:var(--muted); font-size:14px;">Carregando disponibilidade...</div>
-        <button class="btn" id="btnSortear">Sortear novo cliente</button>
-      </div>
-      <div class="error-msg" id="erroSorteio"></div>
+  <div class="app-shell">
+    <div class="sidebar">
+      <div class="sidebar-item ativo" data-pagina="sorteio" onclick="mudarPagina('sorteio')">🎲 Sorteio</div>
+      <div class="sidebar-item" data-pagina="contratos" onclick="mudarPagina('contratos')">📄 Contratos</div>
     </div>
 
-    <div class="card">
-      <h2 style="margin-top:0;">🏆 Ranking da equipe</h2>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>#</th><th>Consultor</th><th>Sorteados</th><th>Tabulados</th><th>Vendas</th></tr></thead>
-          <tbody id="tbodyRanking"></tbody>
-        </table>
-      </div>
-    </div>
+    <div class="main-content">
+      <div class="container">
 
-    <div class="card hidden" id="cardReagendamentos">
-      <h2 style="margin-top:0;">📅 Retornos de hoje (ou atrasados)</h2>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Cliente</th><th>CPF</th><th>Reagendado para</th></tr></thead>
-          <tbody id="tbodyReagendamentos"></tbody>
-        </table>
-      </div>
-    </div>
+        <!-- ===== PÁGINA: SORTEIO ===== -->
+        <div class="page-panel ativa" id="page-sorteio">
+          <h1>Meus clientes</h1>
+          <p class="subtitle">Sorteie um novo cliente quando quiser trabalhar em alguém novo. Clique num cliente já sorteado pra abrir a tela dele.</p>
 
-    <div class="grid-stats" id="stats"></div>
+          <div class="card">
+            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+              <div id="disponiveisInfo" style="color:var(--muted); font-size:14px;">Carregando disponibilidade...</div>
+              <button class="btn" id="btnSortear">Sortear novo cliente</button>
+            </div>
+            <div class="error-msg" id="erroSorteio"></div>
+          </div>
 
-    <div class="card">
-      <div class="row" style="margin-bottom:16px;">
-        <select id="filtroStatus">
-          <option value="">Todos os status</option>
-          <option value="em_andamento">Em andamento</option>
-          <option value="tabulado">Tabulado</option>
-        </select>
-        <input type="text" id="busca" placeholder="Buscar por nome ou CPF...">
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr><th>Nome</th><th>CPF</th><th>PMT</th><th>Status</th><th>Última tabulação</th></tr>
-          </thead>
-          <tbody id="tbodyLeads"></tbody>
-        </table>
+          <div class="card">
+            <h2 style="margin-top:0;">🏆 Ranking da equipe</h2>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>#</th><th>Consultor</th><th>Sorteados</th><th>Tabulados</th><th>Vendas</th></tr></thead>
+                <tbody id="tbodyRanking"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card hidden" id="cardReagendamentos">
+            <h2 style="margin-top:0;">📅 Retornos de hoje (ou atrasados)</h2>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Cliente</th><th>CPF</th><th>Reagendado para</th></tr></thead>
+                <tbody id="tbodyReagendamentos"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="grid-stats" id="stats"></div>
+
+          <div class="card">
+            <div class="row" style="margin-bottom:16px;">
+              <select id="filtroStatus">
+                <option value="">Todos os status</option>
+                <option value="em_andamento">Em andamento</option>
+                <option value="tabulado">Tabulado</option>
+              </select>
+              <input type="text" id="busca" placeholder="Buscar por nome ou CPF...">
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Nome</th><th>CPF</th><th>PMT</th><th>Status</th><th>Última tabulação</th></tr>
+                </thead>
+                <tbody id="tbodyLeads"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== PÁGINA: CONTRATOS ===== -->
+        <div class="page-panel" id="page-contratos">
+          <h1>Meus contratos</h1>
+          <p class="subtitle">Espelho da esteira operacional do CredBase — o admin atualiza isso periodicamente importando a planilha.</p>
+
+          <div class="card">
+            <div class="row" style="margin-bottom:16px;">
+              <input type="text" id="buscaContrato" placeholder="Buscar por cliente ou nº do contrato...">
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Nº Contrato</th><th>Cliente</th><th>Situação</th><th>Esteira</th><th>Convênio</th><th>Liberação</th><th>Produção</th><th>Parcela</th><th>Prazo</th><th>Tabela</th><th>Atualizado</th></tr>
+                </thead>
+                <tbody id="tbodyContratos"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -76,6 +110,13 @@
   <script>
     let PERFIL = null;
     let LEADS_CACHE = [];
+    let CONTRATOS_CACHE = [];
+
+    function mudarPagina(nome) {
+      document.querySelectorAll(".sidebar-item").forEach((el) => el.classList.toggle("ativo", el.dataset.pagina === nome));
+      document.querySelectorAll(".page-panel").forEach((el) => el.classList.toggle("ativa", el.id === "page-" + nome));
+      if (nome === "contratos" && CONTRATOS_CACHE.length === 0) carregarContratos();
+    }
 
     async function carregarLeads() {
       const { data, error } = await supabaseClient
@@ -204,6 +245,45 @@
         </tr>
       `).join("");
     }
+
+    // ---------- Contratos (espelho do CredBase) ----------
+    async function carregarContratos() {
+      const tbody = document.getElementById("tbodyContratos");
+      tbody.innerHTML = `<tr><td colspan="11" style="color:var(--muted);">Carregando...</td></tr>`;
+      const { data, error } = await supabaseClient
+        .from("contratos_credbase").select("*").order("atualizado_em", { ascending: false });
+      if (error) { tbody.innerHTML = `<tr><td colspan="11" style="color:var(--muted);">Erro ao carregar contratos.</td></tr>`; return; }
+      CONTRATOS_CACHE = data || [];
+      renderContratos();
+    }
+
+    function renderContratos() {
+      const tbody = document.getElementById("tbodyContratos");
+      const busca = document.getElementById("buscaContrato").value.trim().toLowerCase();
+      const filtrados = CONTRATOS_CACHE.filter((c) =>
+        !busca || (c.cliente_nome || "").toLowerCase().includes(busca) || (c.numero_contrato || "").toLowerCase().includes(busca)
+      );
+      if (filtrados.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="11" style="color:var(--muted);">Nenhum contrato encontrado ainda. O admin importa isso periodicamente do CredBase.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = filtrados.map((c) => `
+        <tr>
+          <td>${c.numero_contrato}</td>
+          <td>${c.cliente_nome || "-"}</td>
+          <td>${c.situacao || "-"}</td>
+          <td>${c.esteira || "-"}</td>
+          <td>${c.convenio || "-"}</td>
+          <td>${formatBRL(c.liberacao)}</td>
+          <td>${formatBRL(c.producao)}</td>
+          <td>${formatBRL(c.parcela)}</td>
+          <td>${c.prazo || "-"}</td>
+          <td>${c.tabela || "-"}</td>
+          <td>${new Date(c.atualizado_em).toLocaleDateString("pt-BR")}</td>
+        </tr>
+      `).join("");
+    }
+    document.getElementById("buscaContrato").addEventListener("input", renderContratos);
 
     (async () => {
       const auth = await exigirLogin("consultor");
