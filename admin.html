@@ -604,11 +604,11 @@
         const buffer = await input.files[0].arrayBuffer();
         const wb = XLSX.read(buffer, { type: "array" });
         const primeiraAba = wb.Sheets[wb.SheetNames[0]];
-        const linhas = XLSX.utils.sheet_to_json(primeiraAba, { defval: "" });
+        const linhas = XLSX.utils.sheet_to_json(primeiraAba, { defval: "", raw: false });
         if (linhas.length === 0) throw new Error("Planilha vazia ou sem cabeçalho reconhecido.");
 
         const contratosParaImportar = linhas.map((linha) => {
-          const numeroContrato = pegarCampo(linha, "Nº Contrato", "N Contrato", "Numero Contrato", "Contrato");
+          const numeroContrato = pegarCampo(linha, "Codigo Credbase", "Código Credbase", "Nº Contrato", "N Contrato", "Numero Contrato", "Contrato");
           if (!numeroContrato) return null;
 
           const vendedorTexto = (pegarCampo(linha, "Vendedor") || "").toString();
