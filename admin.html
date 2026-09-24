@@ -103,7 +103,7 @@
             <div class="table-wrap">
               <table>
                 <thead>
-                  <tr><th>Nº Contrato</th><th>Cliente</th><th>CPF</th><th>Consultor</th><th>Situação</th><th>Esteira</th><th>Convênio</th><th>Liberação</th><th>Produção</th><th>Parcela</th><th>Prazo</th><th>Tabela</th><th>Dívidas</th><th>Atualizado</th></tr>
+                  <tr><th>Nº Contrato</th><th>Cliente</th><th>CPF</th><th>Consultor</th><th>Tipo</th><th>Situação</th><th>Esteira</th><th>Início</th><th>Convênio</th><th>Liberação</th><th>Produção</th><th>Parcela</th><th>Prazo</th><th>Tabela</th><th>Dívidas</th><th>Atualizado</th></tr>
                 </thead>
                 <tbody id="tbodyContratosAdmin"></tbody>
               </table>
@@ -670,10 +670,10 @@
 
     async function carregarContratos() {
       const tbody = document.getElementById("tbodyContratosAdmin");
-      tbody.innerHTML = `<tr><td colspan="14" style="color:var(--muted);">Carregando...</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="16" style="color:var(--muted);">Carregando...</td></tr>`;
       const { data, error } = await supabaseClient
         .from("contratos_credbase").select("*, profiles(nome)").order("atualizado_em", { ascending: false });
-      if (error) { tbody.innerHTML = `<tr><td colspan="14" style="color:var(--muted);">Erro ao carregar contratos.</td></tr>`; return; }
+      if (error) { tbody.innerHTML = `<tr><td colspan="16" style="color:var(--muted);">Erro ao carregar contratos.</td></tr>`; return; }
       CONTRATOS = data || [];
       renderContratosAdmin();
     }
@@ -699,7 +699,7 @@
       });
 
       if (filtrados.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="14" style="color:var(--muted);">Nenhum contrato encontrado. Importe a planilha do CredBase acima.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="16" style="color:var(--muted);">Nenhum contrato encontrado. Importe a planilha do CredBase acima.</td></tr>`;
         return;
       }
 
@@ -709,8 +709,10 @@
           <td>${c.cliente_nome || "-"}</td>
           <td>${c.cpf ? maskCPF(c.cpf) : "-"}</td>
           <td>${c.profiles ? c.profiles.nome : '<span class="hint">não identificado</span>'}</td>
+          <td>${c.tipo || "-"}</td>
           <td>${c.situacao || "-"}</td>
           <td>${c.esteira || "-"}</td>
+          <td>${c.data_inicio ? new Date(c.data_inicio + "T00:00:00").toLocaleDateString("pt-BR") : "-"}</td>
           <td>${c.convenio || "-"}</td>
           <td>${formatBRL(c.liberacao)}</td>
           <td>${formatBRL(c.producao)}</td>
