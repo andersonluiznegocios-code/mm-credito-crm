@@ -53,6 +53,28 @@ body {
 
 .container { padding: 28px; max-width: 1200px; margin: 0 auto; }
 
+/* Menu lateral (admin e consultor) */
+.app-shell { display: flex; align-items: flex-start; }
+.sidebar {
+  width: 220px; min-width: 220px; background: var(--charcoal); border-right: 1px solid var(--gold);
+  min-height: calc(100vh - 73px); padding: 20px 0; position: sticky; top: 73px;
+}
+.sidebar-item {
+  display: flex; align-items: center; gap: 10px; padding: 12px 22px; color: var(--muted);
+  cursor: pointer; font-size: 14px; border-left: 3px solid transparent; user-select: none;
+}
+.sidebar-item:hover { background: rgba(212,175,55,0.08); color: var(--gold-soft); }
+.sidebar-item.ativo { background: rgba(212,175,55,0.14); color: var(--gold); border-left-color: var(--gold); font-weight: bold; }
+.main-content { flex: 1; min-width: 0; }
+.page-panel { display: none; }
+.page-panel.ativa { display: block; }
+@media (max-width: 720px) {
+  .sidebar { width: 100%; min-width: 0; position: relative; top: 0; min-height: auto; display: flex; overflow-x: auto; padding: 8px; }
+  .sidebar-item { border-left: none; border-bottom: 3px solid transparent; white-space: nowrap; padding: 10px 14px; }
+  .sidebar-item.ativo { border-left-color: transparent; border-bottom-color: var(--gold); }
+  .app-shell { flex-direction: column; }
+}
+
 h1 { font-size: 26px; margin: 0 0 4px; color: var(--white); }
 h2 { font-size: 18px; color: var(--gold-soft); margin: 30px 0 12px; }
 p.subtitle { color: var(--muted); margin-top: 0; }
