@@ -16,120 +16,189 @@
     </div>
   </div>
 
-  <div class="container">
-    <h1>Painel do administrador</h1>
-    <p class="subtitle">Carregue clientes, sorteie entre os consultores e acompanhe tabulações e vendas.</p>
-
-    <div class="grid-stats" id="stats"></div>
-
-    <h2>1. Carregar clientes (CSV)</h2>
-    <div class="card">
-      <p class="hint" style="margin-top:0;">Arquivo CSV com colunas: CPF, NOME, PMT, TELEFONE (telefones separados por ; ) — igual às bases que você já usa.</p>
-      <input type="file" id="arquivoCsv" accept=".csv">
-      <button class="btn" id="btnImportar" style="margin-left:10px;">Importar</button>
-      <div class="error-msg" id="erroImport"></div>
-      <p class="hint">Depois de importado, cada consultor sorteia os próprios clientes direto no painel dele — você não precisa distribuir manualmente.</p>
+  <div class="app-shell">
+    <div class="sidebar">
+      <div class="sidebar-item ativo" data-pagina="visao-geral" onclick="mudarPagina('visao-geral')">📊 Visão geral</div>
+      <div class="sidebar-item" data-pagina="contratos" onclick="mudarPagina('contratos')">📄 Contratos</div>
+      <div class="sidebar-item" data-pagina="sorteios" onclick="mudarPagina('sorteios')">🎲 Sorteios</div>
+      <div class="sidebar-item" data-pagina="tabulacoes" onclick="mudarPagina('tabulacoes')">📝 Tabulações</div>
+      <div class="sidebar-item" data-pagina="propostas" onclick="mudarPagina('propostas')">💰 Propostas</div>
+      <div class="sidebar-item" data-pagina="documentos" onclick="mudarPagina('documentos')">📎 Documentos</div>
+      <div class="sidebar-item" data-pagina="coeficientes" onclick="mudarPagina('coeficientes')">⚙️ Coeficientes</div>
+      <div class="sidebar-item" data-pagina="backup" onclick="mudarPagina('backup')">📦 Baixar tudo</div>
     </div>
 
-    <h2>2. Consultores</h2>
-    <div class="card">
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Nome</th><th>Sorteados</th><th>Tabulados</th><th>Vendas</th><th>Conversão</th><th>Status</th><th>Ação</th></tr></thead>
-          <tbody id="tbodyConsultores"></tbody>
-        </table>
+    <div class="main-content">
+      <div class="container">
+
+        <!-- ===== PÁGINA: VISÃO GERAL ===== -->
+        <div class="page-panel ativa" id="page-visao-geral">
+          <h1>Painel do administrador</h1>
+          <p class="subtitle">Carregue clientes, sorteie entre os consultores e acompanhe tabulações e vendas.</p>
+
+          <div class="grid-stats" id="stats"></div>
+
+          <h2>Carregar clientes (CSV)</h2>
+          <div class="card">
+            <p class="hint" style="margin-top:0;">Arquivo CSV com colunas: CPF, NOME, PMT, TELEFONE (telefones separados por ; ) — igual às bases que você já usa.</p>
+            <input type="file" id="arquivoCsv" accept=".csv">
+            <button class="btn" id="btnImportar" style="margin-left:10px;">Importar</button>
+            <div class="error-msg" id="erroImport"></div>
+            <p class="hint">Depois de importado, cada consultor sorteia os próprios clientes direto no painel dele — você não precisa distribuir manualmente.</p>
+          </div>
+
+          <h2>Consultores</h2>
+          <div class="card">
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Nome</th><th>Sorteados</th><th>Tabulados</th><th>Vendas</th><th>Conversão</th><th>Status</th><th>Ação</th></tr></thead>
+                <tbody id="tbodyConsultores"></tbody>
+              </table>
+            </div>
+            <div class="error-msg" id="erroLiberar"></div>
+
+            <h2 style="margin-top:24px;">Novo consultor</h2>
+            <p class="hint" style="margin-top:0;">Cria o login e o perfil dele de uma vez, usando uma Edge Function segura (ver README para publicar).</p>
+            <div class="row">
+              <div class="field"><label>Nome</label><input type="text" id="novoConsultorNome" placeholder="Nome completo"></div>
+              <div class="field"><label>E-mail</label><input type="email" id="novoConsultorEmail" placeholder="email@exemplo.com"></div>
+              <div class="field"><label>Senha</label><input type="password" id="novoConsultorSenha" placeholder="mínimo 6 caracteres"></div>
+            </div>
+            <button class="btn" id="btnCriarConsultor">Criar consultor</button>
+            <div class="error-msg" id="erroCriarConsultor"></div>
+          </div>
+
+          <h2>Negociações em andamento</h2>
+          <div class="card">
+            <p class="hint" style="margin-top:0;">Clientes que algum consultor está negociando (tabulou como "negociação", não como venda). Se passar de 3 dias sem novo contato, aparece destacado — você pode liberar de volta pra fila.</p>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Cliente</th><th>Consultor</th><th>Última atividade</th><th>Tempo parado</th><th></th></tr></thead>
+                <tbody id="tbodyNegociacoes"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== PÁGINA: CONTRATOS ===== -->
+        <div class="page-panel" id="page-contratos">
+          <h1>Contratos (espelho do CredBase)</h1>
+          <p class="subtitle">Importe a planilha de contratos exportada do CredBase/FUNÇÃO pra acompanhar a esteira operacional aqui dentro.</p>
+
+          <div class="card">
+            <p class="hint" style="margin-top:0;">Aceita .xlsx ou .csv exportado da tela de Contratos do CredBase. O consultor é identificado pelo nome completo no campo "Vendedor" — se não encontrar um consultor com esse nome, o contrato fica sem consultor atribuído (só o admin vê).</p>
+            <input type="file" id="arquivoContratos" accept=".csv,.xlsx,.xls">
+            <button class="btn" id="btnImportarContratos" style="margin-left:10px;">Importar planilha</button>
+            <div class="error-msg" id="erroImportContratos"></div>
+          </div>
+
+          <div class="card">
+            <div class="row" style="margin-bottom:16px;">
+              <select id="filtroConsultorContrato">
+                <option value="">Todos os consultores</option>
+                <option value="__sem__">Sem consultor identificado</option>
+              </select>
+              <input type="text" id="buscaContratoAdmin" placeholder="Buscar por cliente, CPF ou nº do contrato...">
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Nº Contrato</th><th>Cliente</th><th>CPF</th><th>Consultor</th><th>Situação</th><th>Esteira</th><th>Convênio</th><th>Liberação</th><th>Produção</th><th>Parcela</th><th>Prazo</th><th>Tabela</th><th>Dívidas</th><th>Atualizado</th></tr>
+                </thead>
+                <tbody id="tbodyContratosAdmin"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== PÁGINA: SORTEIOS ===== -->
+        <div class="page-panel" id="page-sorteios">
+          <h1>Histórico de sorteios</h1>
+          <div class="card">
+            <p class="hint" style="margin-top:0;">Rastro de qual consultor sorteou qual cliente, com data e horário.</p>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Consultor</th><th>Cliente</th><th>CPF</th><th>Data/Hora do sorteio</th></tr></thead>
+                <tbody id="tbodySorteios"></tbody>
+              </table>
+            </div>
+            <button class="btn secondary hidden" id="btnMaisSorteios" style="margin-top:12px;">Carregar mais</button>
+          </div>
+        </div>
+
+        <!-- ===== PÁGINA: TABULAÇÕES ===== -->
+        <div class="page-panel" id="page-tabulacoes">
+          <h1>Tabulações recentes</h1>
+          <div class="card">
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Cliente</th><th>Consultor</th><th>Resultado</th><th>Observação</th><th>Data</th></tr></thead>
+                <tbody id="tbodyTabulacoes"></tbody>
+              </table>
+            </div>
+            <button class="btn secondary hidden" id="btnMaisTabulacoes" style="margin-top:12px;">Carregar mais</button>
+          </div>
+        </div>
+
+        <!-- ===== PÁGINA: PROPOSTAS ===== -->
+        <div class="page-panel" id="page-propostas">
+          <h1>Exportar propostas para digitar na FUNÇÃO</h1>
+          <div class="card">
+            <div id="propostasInfo" style="margin-bottom:12px; color:var(--muted);"></div>
+            <button class="btn" id="btnExportar">Baixar Excel das propostas pendentes</button>
+            <div class="error-msg" id="erroExport"></div>
+          </div>
+        </div>
+
+        <!-- ===== PÁGINA: DOCUMENTOS ===== -->
+        <div class="page-panel" id="page-documentos">
+          <h1>Documentos enviados pelos clientes</h1>
+          <div class="card">
+            <p class="hint" style="margin-top:0;">Todos os PDFs/JPEGs anexados pelos consultores. Confira antes de digitar na FUNÇÃO.</p>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Cliente</th><th>CPF</th><th>Consultor</th><th>Arquivo</th><th>Enviado em</th><th></th></tr></thead>
+                <tbody id="tbodyDocumentos"></tbody>
+              </table>
+            </div>
+            <button class="btn secondary hidden" id="btnMaisDocumentos" style="margin-top:12px;">Carregar mais</button>
+          </div>
+        </div>
+
+        <!-- ===== PÁGINA: COEFICIENTES ===== -->
+        <div class="page-panel" id="page-coeficientes">
+          <h1>Coeficientes (tabela de taxas da MK)</h1>
+          <div class="card">
+            <p class="hint" style="margin-top:0;">Usado no cálculo de simulação (valor da parcela ÷ coeficiente = valor de contrato). Atualize aqui sempre que a MK publicar tabela nova — não precisa mexer em código.</p>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Convênio</th><th>Tabela</th><th>Coeficiente</th><th></th></tr></thead>
+                <tbody id="tbodyCoeficientes"></tbody>
+              </table>
+            </div>
+            <div class="error-msg" id="erroCoeficientes"></div>
+
+            <h2 style="margin-top:24px;">Adicionar novo convênio/tabela</h2>
+            <p class="hint" style="margin-top:0;">Use pra cadastrar coeficientes de convênios novos, como SEPLAG/MG ou PMMG.</p>
+            <div class="row">
+              <div class="field"><label>Convênio</label><input type="text" id="novoConvenio" placeholder="Ex: SEPLAG/MG"></div>
+              <div class="field"><label>Tabela</label><input type="text" id="novaTabela" placeholder="Ex: TOP Comercial"></div>
+              <div class="field"><label>Coeficiente</label><input type="number" step="0.000000001" id="novoCoeficiente" placeholder="0.0000000"></div>
+            </div>
+            <button class="btn" id="btnAdicionarCoeficiente">Adicionar</button>
+          </div>
+        </div>
+
+        <!-- ===== PÁGINA: BAIXAR TUDO ===== -->
+        <div class="page-panel" id="page-backup">
+          <h1>Baixar tudo</h1>
+          <div class="card">
+            <p class="hint" style="margin-top:0;">Gera um Excel com todas as abas: clientes, tabulações, propostas, sorteios, documentos e contratos.</p>
+            <button class="btn secondary" id="btnExportarTudo">Baixar Excel completo</button>
+          </div>
+        </div>
+
       </div>
-      <div class="error-msg" id="erroLiberar"></div>
-
-      <h2 style="margin-top:24px;">Novo consultor</h2>
-      <p class="hint" style="margin-top:0;">Cria o login e o perfil dele de uma vez, usando uma Edge Function segura (ver README para publicar).</p>
-      <div class="row">
-        <div class="field"><label>Nome</label><input type="text" id="novoConsultorNome" placeholder="Nome completo"></div>
-        <div class="field"><label>E-mail</label><input type="email" id="novoConsultorEmail" placeholder="email@exemplo.com"></div>
-        <div class="field"><label>Senha</label><input type="password" id="novoConsultorSenha" placeholder="mínimo 6 caracteres"></div>
-      </div>
-      <button class="btn" id="btnCriarConsultor">Criar consultor</button>
-      <div class="error-msg" id="erroCriarConsultor"></div>
-    </div>
-
-    <h2>3. Negociações em andamento</h2>
-    <div class="card">
-      <p class="hint" style="margin-top:0;">Clientes que algum consultor está negociando (tabulou como "negociação", não como venda). Se passar de 3 dias sem novo contato, aparece destacado — você pode liberar de volta pra fila.</p>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Cliente</th><th>Consultor</th><th>Última atividade</th><th>Tempo parado</th><th></th></tr></thead>
-          <tbody id="tbodyNegociacoes"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <h2>4. Histórico de sorteios</h2>
-    <div class="card">
-      <p class="hint" style="margin-top:0;">Rastro de qual consultor sorteou qual cliente, com data e horário.</p>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Consultor</th><th>Cliente</th><th>CPF</th><th>Data/Hora do sorteio</th></tr></thead>
-          <tbody id="tbodySorteios"></tbody>
-        </table>
-      </div>
-      <button class="btn secondary hidden" id="btnMaisSorteios" style="margin-top:12px;">Carregar mais</button>
-    </div>
-
-    <h2>5. Tabulações recentes</h2>
-    <div class="card">
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Cliente</th><th>Consultor</th><th>Resultado</th><th>Observação</th><th>Data</th></tr></thead>
-          <tbody id="tbodyTabulacoes"></tbody>
-        </table>
-      </div>
-      <button class="btn secondary hidden" id="btnMaisTabulacoes" style="margin-top:12px;">Carregar mais</button>
-    </div>
-
-    <h2>6. Exportar propostas para digitar na FUNÇÃO</h2>
-    <div class="card">
-      <div id="propostasInfo" style="margin-bottom:12px; color:var(--muted);"></div>
-      <button class="btn" id="btnExportar">Baixar Excel das propostas pendentes</button>
-      <div class="error-msg" id="erroExport"></div>
-    </div>
-
-    <h2>7. Documentos enviados pelos clientes</h2>
-    <div class="card">
-      <p class="hint" style="margin-top:0;">Todos os PDFs/JPEGs anexados pelos consultores. Confira antes de digitar na FUNÇÃO.</p>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Cliente</th><th>CPF</th><th>Consultor</th><th>Arquivo</th><th>Enviado em</th><th></th></tr></thead>
-          <tbody id="tbodyDocumentos"></tbody>
-        </table>
-      </div>
-      <button class="btn secondary hidden" id="btnMaisDocumentos" style="margin-top:12px;">Carregar mais</button>
-    </div>
-
-    <h2>8. Coeficientes (tabela de taxas da MK)</h2>
-    <div class="card">
-      <p class="hint" style="margin-top:0;">Usado no cálculo de simulação (valor da parcela ÷ coeficiente = valor de contrato). Atualize aqui sempre que a MK publicar tabela nova — não precisa mexer em código.</p>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Convênio</th><th>Tabela</th><th>Coeficiente</th><th></th></tr></thead>
-          <tbody id="tbodyCoeficientes"></tbody>
-        </table>
-      </div>
-      <div class="error-msg" id="erroCoeficientes"></div>
-
-      <h2 style="margin-top:24px;">Adicionar novo convênio/tabela</h2>
-      <p class="hint" style="margin-top:0;">Use pra cadastrar coeficientes de convênios novos, como SEPLAG/MG ou PMMG.</p>
-      <div class="row">
-        <div class="field"><label>Convênio</label><input type="text" id="novoConvenio" placeholder="Ex: SEPLAG/MG"></div>
-        <div class="field"><label>Tabela</label><input type="text" id="novaTabela" placeholder="Ex: TOP Comercial"></div>
-        <div class="field"><label>Coeficiente</label><input type="number" step="0.000000001" id="novoCoeficiente" placeholder="0.0000000"></div>
-      </div>
-      <button class="btn" id="btnAdicionarCoeficiente">Adicionar</button>
-    </div>
-
-    <h2>9. Baixar tudo</h2>
-    <div class="card">
-      <p class="hint" style="margin-top:0;">Gera um Excel com todas as abas: clientes, tabulações, propostas, sorteios e documentos.</p>
-      <button class="btn secondary" id="btnExportarTudo">Baixar Excel completo</button>
     </div>
   </div>
 
@@ -149,9 +218,16 @@
     let DOCUMENTOS = [];
     let TABS_EM_ANDAMENTO = [];
     let SORTEIOS_EM_ANDAMENTO = [];
+    let CONTRATOS = [];
     let LIMITE_SORTEIOS = 25;
     let LIMITE_TABULACOES = 25;
     let LIMITE_DOCUMENTOS = 25;
+
+    function mudarPagina(nome) {
+      document.querySelectorAll(".sidebar-item").forEach((el) => el.classList.toggle("ativo", el.dataset.pagina === nome));
+      document.querySelectorAll(".page-panel").forEach((el) => el.classList.toggle("ativa", el.id === "page-" + nome));
+      if (nome === "contratos" && CONTRATOS.length === 0) carregarContratos();
+    }
 
     async function carregarTudo() {
       const [{ data: consultores }, { data: leads }, { data: tabulacoes }, { data: propostas }, { data: propostasTodas }, { data: sorteios }, { data: coeficientes }, { data: documentos }, { data: tabsEmAndamento }, { data: sorteiosEmAndamento }] = await Promise.all([
@@ -184,6 +260,7 @@
       renderCoeficientes();
       renderDocumentos();
       renderNegociacoes();
+      popularFiltroConsultorContrato();
 
       document.getElementById("btnMaisSorteios").classList.toggle("hidden", SORTEIOS.length < LIMITE_SORTEIOS);
       document.getElementById("btnMaisTabulacoes").classList.toggle("hidden", TABULACOES.length < LIMITE_TABULACOES);
@@ -438,7 +515,7 @@
           : `${PROPOSTAS_PENDENTES.length} proposta(s) prontas para exportar.`;
     }
 
-    // ---------- 1. Importar CSV ----------
+    // ---------- Importar CSV de clientes ----------
     document.getElementById("btnImportar").addEventListener("click", async () => {
       const erroEl = document.getElementById("erroImport");
       erroEl.textContent = "";
@@ -479,7 +556,176 @@
       btn.disabled = false; btn.textContent = "Importar";
     });
 
-    // ---------- 5. Exportar propostas ----------
+    // ---------- Contratos (espelho do CredBase) ----------
+    function normalizarTexto(s) {
+      return (s || "").toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+    }
+    function parseNumeroBR(v) {
+      if (v === null || v === undefined || v === "") return null;
+      if (typeof v === "number") return v;
+      const limpo = v.toString().replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", ".");
+      const n = parseFloat(limpo);
+      return isNaN(n) ? null : n;
+    }
+    function parseInteiro(v) {
+      if (v === null || v === undefined || v === "") return null;
+      const m = v.toString().match(/\d+/);
+      return m ? parseInt(m[0], 10) : null;
+    }
+    function parseDataBR(v) {
+      if (!v || v === "--") return null;
+      const m = v.toString().trim().match(/^(\d{2})\/(\d{2})\/(\d{2,4})$/);
+      if (!m) return null;
+      let ano = m[3];
+      if (ano.length === 2) ano = "20" + ano;
+      return `${ano}-${m[2]}-${m[1]}`;
+    }
+    // acha o valor de uma linha da planilha por uma lista de nomes de coluna possíveis (ignora acento/maiúsculo)
+    function pegarCampo(linha, ...nomes) {
+      const chaves = Object.keys(linha);
+      for (const nome of nomes) {
+        const alvo = normalizarTexto(nome);
+        const chave = chaves.find((k) => normalizarTexto(k) === alvo);
+        if (chave !== undefined) return linha[chave];
+      }
+      return null;
+    }
+
+    document.getElementById("btnImportarContratos").addEventListener("click", async () => {
+      const erroEl = document.getElementById("erroImportContratos");
+      erroEl.textContent = "";
+      const input = document.getElementById("arquivoContratos");
+      if (!input.files || input.files.length === 0) { erroEl.textContent = "Selecione um arquivo .xlsx ou .csv."; return; }
+
+      const btn = document.getElementById("btnImportarContratos");
+      btn.disabled = true; btn.textContent = "Importando...";
+
+      try {
+        const buffer = await input.files[0].arrayBuffer();
+        const wb = XLSX.read(buffer, { type: "array" });
+        const primeiraAba = wb.Sheets[wb.SheetNames[0]];
+        const linhas = XLSX.utils.sheet_to_json(primeiraAba, { defval: "" });
+        if (linhas.length === 0) throw new Error("Planilha vazia ou sem cabeçalho reconhecido.");
+
+        const contratosParaImportar = linhas.map((linha) => {
+          const numeroContrato = pegarCampo(linha, "Nº Contrato", "N Contrato", "Numero Contrato", "Contrato");
+          if (!numeroContrato) return null;
+
+          const vendedorTexto = (pegarCampo(linha, "Vendedor") || "").toString();
+          const vendedorNome = vendedorTexto.split("(")[0].trim();
+          const consultorEncontrado = CONSULTORES.find((c) => normalizarTexto(c.nome) === normalizarTexto(vendedorNome));
+
+          return {
+            numero_contrato: numeroContrato.toString().trim(),
+            codigo: pegarCampo(linha, "Código", "Codigo") || null,
+            bancos_quitados: pegarCampo(linha, "Banco(s) quitado(s)", "Bancos quitados") || null,
+            filial: pegarCampo(linha, "Filial") || null,
+            esteira: pegarCampo(linha, "Esteira") || null,
+            esteira_dias: parseInteiro(pegarCampo(linha, "Esteira(dias)", "Esteira dias")),
+            tipo: pegarCampo(linha, "Tipo") || null,
+            operacao: (pegarCampo(linha, "Operação", "Operacao") || "").toString() || null,
+            situacao: pegarCampo(linha, "Situação", "Situacao") || null,
+            data_inicio: parseDataBR(pegarCampo(linha, "Início", "Inicio")),
+            cliente_nome: pegarCampo(linha, "Cliente") || null,
+            data_averbacao: pegarCampo(linha, "Data Averbação", "Data Averbacao") || null,
+            cpf: (pegarCampo(linha, "CPF") || "").toString().replace(/\D/g, "") || null,
+            vendedor_nome: vendedorNome || null,
+            consultor_id: consultorEncontrado ? consultorEncontrado.id : null,
+            convenio: pegarCampo(linha, "Convênio", "Convenio") || null,
+            banco: pegarCampo(linha, "Banco") || null,
+            liberacao: parseNumeroBR(pegarCampo(linha, "Liberação", "Liberacao")),
+            producao: parseNumeroBR(pegarCampo(linha, "Produção", "Producao")),
+            total: parseNumeroBR(pegarCampo(linha, "Total")),
+            parcela: parseNumeroBR(pegarCampo(linha, "Parcela")),
+            prazo: parseInteiro(pegarCampo(linha, "Prazo")),
+            tabela: pegarCampo(linha, "Tabela") || null,
+            comentarios: pegarCampo(linha, "Comentários", "Comentarios") || null,
+            dividas: parseInteiro(pegarCampo(linha, "Dividas", "Dívidas")),
+            pendencias: /^(sim|1|true|x|s)$/i.test((pegarCampo(linha, "Pendências", "Pendencias") || "").toString().trim()),
+            atualizado_em: new Date().toISOString(),
+          };
+        }).filter(Boolean);
+
+        if (contratosParaImportar.length === 0) throw new Error("Nenhuma linha com \"Nº Contrato\" válido foi encontrada. Confira o cabeçalho da planilha.");
+
+        const TAM_LOTE = 300;
+        for (let i = 0; i < contratosParaImportar.length; i += TAM_LOTE) {
+          const lote = contratosParaImportar.slice(i, i + TAM_LOTE);
+          const { error } = await supabaseClient.from("contratos_credbase").upsert(lote, { onConflict: "numero_contrato" });
+          if (error) throw error;
+        }
+
+        const semConsultor = contratosParaImportar.filter((c) => !c.consultor_id).length;
+        input.value = "";
+        await carregarContratos();
+        erroEl.style.color = "var(--success)";
+        erroEl.textContent = `${contratosParaImportar.length} contrato(s) importado(s)/atualizado(s).` +
+          (semConsultor > 0 ? ` ${semConsultor} sem consultor identificado pelo nome do vendedor.` : "");
+      } catch (e) {
+        erroEl.style.color = "var(--danger)";
+        erroEl.textContent = "Erro ao importar: " + e.message;
+      }
+      btn.disabled = false; btn.textContent = "Importar planilha";
+    });
+
+    async function carregarContratos() {
+      const tbody = document.getElementById("tbodyContratosAdmin");
+      tbody.innerHTML = `<tr><td colspan="14" style="color:var(--muted);">Carregando...</td></tr>`;
+      const { data, error } = await supabaseClient
+        .from("contratos_credbase").select("*, profiles(nome)").order("atualizado_em", { ascending: false });
+      if (error) { tbody.innerHTML = `<tr><td colspan="14" style="color:var(--muted);">Erro ao carregar contratos.</td></tr>`; return; }
+      CONTRATOS = data || [];
+      renderContratosAdmin();
+    }
+
+    function popularFiltroConsultorContrato() {
+      const sel = document.getElementById("filtroConsultorContrato");
+      const atual = sel.value;
+      sel.innerHTML = `<option value="">Todos os consultores</option><option value="__sem__">Sem consultor identificado</option>` +
+        CONSULTORES.map((c) => `<option value="${c.id}">${c.nome}</option>`).join("");
+      sel.value = atual;
+    }
+
+    function renderContratosAdmin() {
+      const tbody = document.getElementById("tbodyContratosAdmin");
+      const busca = document.getElementById("buscaContratoAdmin").value.trim().toLowerCase();
+      const filtroConsultor = document.getElementById("filtroConsultorContrato").value;
+
+      const filtrados = CONTRATOS.filter((c) => {
+        if (filtroConsultor === "__sem__" && c.consultor_id) return false;
+        if (filtroConsultor && filtroConsultor !== "__sem__" && c.consultor_id !== filtroConsultor) return false;
+        if (busca && !((c.cliente_nome || "").toLowerCase().includes(busca) || (c.cpf || "").includes(busca) || (c.numero_contrato || "").toLowerCase().includes(busca))) return false;
+        return true;
+      });
+
+      if (filtrados.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="14" style="color:var(--muted);">Nenhum contrato encontrado. Importe a planilha do CredBase acima.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtrados.map((c) => `
+        <tr>
+          <td>${c.numero_contrato}</td>
+          <td>${c.cliente_nome || "-"}</td>
+          <td>${c.cpf ? maskCPF(c.cpf) : "-"}</td>
+          <td>${c.profiles ? c.profiles.nome : '<span class="hint">não identificado</span>'}</td>
+          <td>${c.situacao || "-"}</td>
+          <td>${c.esteira || "-"}</td>
+          <td>${c.convenio || "-"}</td>
+          <td>${formatBRL(c.liberacao)}</td>
+          <td>${formatBRL(c.producao)}</td>
+          <td>${formatBRL(c.parcela)}</td>
+          <td>${c.prazo || "-"}</td>
+          <td>${c.tabela || "-"}</td>
+          <td>${c.dividas ?? "-"}</td>
+          <td>${new Date(c.atualizado_em).toLocaleDateString("pt-BR")}</td>
+        </tr>
+      `).join("");
+    }
+    document.getElementById("buscaContratoAdmin").addEventListener("input", renderContratosAdmin);
+    document.getElementById("filtroConsultorContrato").addEventListener("change", renderContratosAdmin);
+
+    // ---------- Exportar propostas ----------
     document.getElementById("btnExportar").addEventListener("click", async () => {
       const erroEl = document.getElementById("erroExport");
       erroEl.textContent = "";
@@ -544,12 +790,12 @@
       }
     });
 
-    // ---------- 6. Exportar tudo ----------
+    // ---------- Exportar tudo ----------
     document.getElementById("btnExportarTudo").addEventListener("click", async () => {
       const btn = document.getElementById("btnExportarTudo");
       btn.disabled = true; btn.textContent = "Gerando...";
 
-      const [{ data: todosLeads }, { data: todasTabulacoes }, { data: todasPropostas }, { data: todosSorteios }, { data: todosDocumentos }, { data: todasRelacionadas }, { data: todosItensSim }] = await Promise.all([
+      const [{ data: todosLeads }, { data: todasTabulacoes }, { data: todasPropostas }, { data: todosSorteios }, { data: todosDocumentos }, { data: todasRelacionadas }, { data: todosItensSim }, { data: todosContratos }] = await Promise.all([
         supabaseClient.from("leads").select("*, profiles(nome)"),
         supabaseClient.from("tabulacoes").select("*, leads(nome, cpf), profiles(nome)"),
         supabaseClient.from("propostas").select("*, leads(nome, cpf, cep, logradouro, numero, complemento, bairro, cidade, uf, telefone_contato, email, banco, agencia, conta, tipo_conta, chave_pix), profiles(nome)"),
@@ -557,6 +803,7 @@
         supabaseClient.from("documentos").select("*, leads(nome, cpf), profiles(nome)"),
         supabaseClient.from("pessoas_relacionadas").select("*, leads(nome, cpf), profiles(nome)"),
         supabaseClient.from("simulacao_itens").select("*, simulacoes(convenio, tabela, prazo, leads(nome, cpf), profiles(nome))"),
+        supabaseClient.from("contratos_credbase").select("*, profiles(nome)"),
       ]);
 
       const wb = XLSX.utils.book_new();
@@ -623,6 +870,17 @@
           "Data": new Date(i.criado_em).toLocaleString("pt-BR"),
         };
       })), "Itens de Simulação");
+
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet((todosContratos || []).map((c) => ({
+        "Nº Contrato": c.numero_contrato, "Código": c.codigo, "Cliente": c.cliente_nome, "CPF": c.cpf,
+        "Consultor": c.profiles ? c.profiles.nome : "", "Vendedor (planilha)": c.vendedor_nome,
+        "Situação": c.situacao, "Esteira": c.esteira, "Esteira (dias)": c.esteira_dias, "Tipo": c.tipo,
+        "Operação": c.operacao, "Início": c.data_inicio, "Data Averbação": c.data_averbacao,
+        "Convênio": c.convenio, "Banco": c.banco, "Bancos Quitados": c.bancos_quitados,
+        "Liberação": c.liberacao, "Produção": c.producao, "Total": c.total, "Parcela": c.parcela,
+        "Prazo": c.prazo, "Tabela": c.tabela, "Dívidas": c.dividas, "Pendências": c.pendencias ? "Sim" : "Não",
+        "Comentários": c.comentarios, "Atualizado em": new Date(c.atualizado_em).toLocaleString("pt-BR"),
+      }))), "Contratos");
 
       const dataStr = new Date().toISOString().slice(0, 10);
       XLSX.writeFile(wb, `MM_Credito_completo_${dataStr}.xlsx`);
