@@ -53,6 +53,11 @@ body {
 
 .container { padding: 28px; max-width: 1200px; margin: 0 auto; }
 
+.meta-progress { width: 100px; height: 8px; background: #2a3868; border-radius: 4px; overflow: hidden; margin-top: 4px; }
+.meta-progress-fill { height: 100%; background: var(--gold); }
+.meta-progress-fill.completo { background: var(--success); }
+table tfoot td { border-top: 2px solid var(--gold); font-weight: bold; color: var(--gold-soft); }
+
 /* Menu lateral (admin e consultor) */
 .app-shell { display: flex; align-items: flex-start; }
 .sidebar {
