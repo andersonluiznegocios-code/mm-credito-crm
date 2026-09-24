@@ -92,7 +92,7 @@
             <div class="table-wrap">
               <table>
                 <thead>
-                  <tr><th>Nº Contrato</th><th>Cliente</th><th>Situação</th><th>Esteira</th><th>Convênio</th><th>Liberação</th><th>Produção</th><th>Parcela</th><th>Prazo</th><th>Tabela</th><th>Atualizado</th></tr>
+                  <tr><th>Nº Contrato</th><th>Cliente</th><th>Tipo</th><th>Situação</th><th>Esteira</th><th>Início</th><th>Convênio</th><th>Liberação</th><th>Produção</th><th>Parcela</th><th>Prazo</th><th>Tabela</th><th>Atualizado</th></tr>
                 </thead>
                 <tbody id="tbodyContratos"></tbody>
               </table>
@@ -249,10 +249,10 @@
     // ---------- Contratos (espelho do CredBase) ----------
     async function carregarContratos() {
       const tbody = document.getElementById("tbodyContratos");
-      tbody.innerHTML = `<tr><td colspan="11" style="color:var(--muted);">Carregando...</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="13" style="color:var(--muted);">Carregando...</td></tr>`;
       const { data, error } = await supabaseClient
         .from("contratos_credbase").select("*").order("atualizado_em", { ascending: false });
-      if (error) { tbody.innerHTML = `<tr><td colspan="11" style="color:var(--muted);">Erro ao carregar contratos.</td></tr>`; return; }
+      if (error) { tbody.innerHTML = `<tr><td colspan="13" style="color:var(--muted);">Erro ao carregar contratos.</td></tr>`; return; }
       CONTRATOS_CACHE = data || [];
       renderContratos();
     }
@@ -264,15 +264,17 @@
         !busca || (c.cliente_nome || "").toLowerCase().includes(busca) || (c.numero_contrato || "").toLowerCase().includes(busca)
       );
       if (filtrados.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="11" style="color:var(--muted);">Nenhum contrato encontrado ainda. O admin importa isso periodicamente do CredBase.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="13" style="color:var(--muted);">Nenhum contrato encontrado ainda. O admin importa isso periodicamente do CredBase.</td></tr>`;
         return;
       }
       tbody.innerHTML = filtrados.map((c) => `
         <tr>
           <td>${c.numero_contrato}</td>
           <td>${c.cliente_nome || "-"}</td>
+          <td>${c.tipo || "-"}</td>
           <td>${c.situacao || "-"}</td>
           <td>${c.esteira || "-"}</td>
+          <td>${c.data_inicio ? new Date(c.data_inicio + "T00:00:00").toLocaleDateString("pt-BR") : "-"}</td>
           <td>${c.convenio || "-"}</td>
           <td>${formatBRL(c.liberacao)}</td>
           <td>${formatBRL(c.producao)}</td>
