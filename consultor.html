@@ -92,9 +92,10 @@
             <div class="table-wrap">
               <table>
                 <thead>
-                  <tr><th>Nº Contrato</th><th>Cliente</th><th>Tipo</th><th>Situação</th><th>Esteira</th><th>Início</th><th>Convênio</th><th>Liberação</th><th>Produção</th><th>Parcela</th><th>Prazo</th><th>Tabela</th><th>Atualizado</th></tr>
+                  <tr><th>Nº Contrato</th><th>Cliente</th><th>Tipo</th><th>Situação</th><th>Esteira</th><th>Início</th><th>Convênio</th><th>Liberação</th><th>Produção</th><th>Parcela</th><th>Prazo</th><th>Tabela</th><th>Pend.</th><th>Atualizado</th></tr>
                 </thead>
                 <tbody id="tbodyContratos"></tbody>
+                <tfoot id="tfootContratos"></tfoot>
               </table>
             </div>
           </div>
@@ -164,10 +165,18 @@
       const total = LEADS_CACHE.length;
       const andamento = LEADS_CACHE.filter((l) => l.status === "em_andamento").length;
       const tabulados = LEADS_CACHE.filter((l) => l.status === "tabulado").length;
+      const producao = CONTRATOS_CACHE.reduce((s, c) => s + (c.producao || 0), 0);
+      const meta = PERFIL.meta_producao || 0;
+      const pct = meta > 0 ? Math.min(100, (producao / meta) * 100) : 0;
       document.getElementById("stats").innerHTML = `
         <div class="stat"><div class="num">${total}</div><div class="label">Total sorteados por mim</div></div>
         <div class="stat"><div class="num">${andamento}</div><div class="label">Em andamento</div></div>
         <div class="stat"><div class="num">${tabulados}</div><div class="label">Tabulados</div></div>
+        <div class="stat">
+          <div class="num">${formatBRL(producao)}</div>
+          <div class="label">Produção${meta > 0 ? ` (meta: ${formatBRL(meta)})` : ""}</div>
+          ${meta > 0 ? `<div class="meta-progress" style="margin:6px auto 0;"><div class="meta-progress-fill${pct >= 100 ? " completo" : ""}" style="width:${pct}%;"></div></div>` : ""}
+        </div>
       `;
     }
 
@@ -249,22 +258,25 @@
     // ---------- Contratos (espelho do CredBase) ----------
     async function carregarContratos() {
       const tbody = document.getElementById("tbodyContratos");
-      tbody.innerHTML = `<tr><td colspan="13" style="color:var(--muted);">Carregando...</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="14" style="color:var(--muted);">Carregando...</td></tr>`;
       const { data, error } = await supabaseClient
         .from("contratos_credbase").select("*").order("atualizado_em", { ascending: false });
-      if (error) { tbody.innerHTML = `<tr><td colspan="13" style="color:var(--muted);">Erro ao carregar contratos.</td></tr>`; return; }
+      if (error) { tbody.innerHTML = `<tr><td colspan="14" style="color:var(--muted);">Erro ao carregar contratos.</td></tr>`; return; }
       CONTRATOS_CACHE = data || [];
       renderContratos();
+      renderStats();
     }
 
     function renderContratos() {
       const tbody = document.getElementById("tbodyContratos");
+      const tfoot = document.getElementById("tfootContratos");
       const busca = document.getElementById("buscaContrato").value.trim().toLowerCase();
       const filtrados = CONTRATOS_CACHE.filter((c) =>
         !busca || (c.cliente_nome || "").toLowerCase().includes(busca) || (c.numero_contrato || "").toLowerCase().includes(busca)
       );
       if (filtrados.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="13" style="color:var(--muted);">Nenhum contrato encontrado ainda. O admin importa isso periodicamente do CredBase.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="14" style="color:var(--muted);">Nenhum contrato encontrado ainda. O admin importa isso periodicamente do CredBase.</td></tr>`;
+        tfoot.innerHTML = "";
         return;
       }
       tbody.innerHTML = filtrados.map((c) => `
@@ -281,9 +293,21 @@
           <td>${formatBRL(c.parcela)}</td>
           <td>${c.prazo || "-"}</td>
           <td>${c.tabela || "-"}</td>
+          <td>${c.pendencias ? '<span style="color:var(--danger); font-weight:bold;">⚠️ Sim</span>' : "-"}</td>
           <td>${new Date(c.atualizado_em).toLocaleDateString("pt-BR")}</td>
         </tr>
       `).join("");
+
+      const somaLiberacao = filtrados.reduce((s, c) => s + (c.liberacao || 0), 0);
+      const somaProducao = filtrados.reduce((s, c) => s + (c.producao || 0), 0);
+      tfoot.innerHTML = `
+        <tr>
+          <td colspan="7">Total (${filtrados.length} contrato${filtrados.length === 1 ? "" : "s"})</td>
+          <td>${formatBRL(somaLiberacao)}</td>
+          <td>${formatBRL(somaProducao)}</td>
+          <td colspan="4"></td>
+        </tr>
+      `;
     }
     document.getElementById("buscaContrato").addEventListener("input", renderContratos);
 
@@ -295,6 +319,7 @@
       carregarLeads();
       atualizarDisponiveis();
       carregarRanking();
+      carregarContratos();
     })();
   </script>
 </body>
