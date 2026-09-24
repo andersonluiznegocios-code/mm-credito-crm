@@ -51,7 +51,7 @@
           <div class="card">
             <div class="table-wrap">
               <table>
-                <thead><tr><th>Nome</th><th>Sorteados</th><th>Tabulados</th><th>Vendas</th><th>Conversão</th><th>Status</th><th>Ação</th></tr></thead>
+                <thead><tr><th>Nome</th><th>Sorteados</th><th>Tabulados</th><th>Vendas</th><th>Conversão</th><th>Produção</th><th>Meta</th><th>Status</th><th>Ação</th></tr></thead>
                 <tbody id="tbodyConsultores"></tbody>
               </table>
             </div>
@@ -93,19 +93,22 @@
           </div>
 
           <div class="card">
-            <div class="row" style="margin-bottom:16px;">
+            <div class="row" style="margin-bottom:16px; align-items:center;">
               <select id="filtroConsultorContrato">
                 <option value="">Todos os consultores</option>
                 <option value="__sem__">Sem consultor identificado</option>
               </select>
               <input type="text" id="buscaContratoAdmin" placeholder="Buscar por cliente, CPF ou nº do contrato...">
+              <label class="hint" style="white-space:nowrap;"><input type="checkbox" id="filtroSoPendencias" style="width:16px; height:16px; vertical-align:middle;"> Só com pendência</label>
+              <button class="btn secondary" id="btnExportarContratos">Baixar Excel</button>
             </div>
             <div class="table-wrap">
               <table>
                 <thead>
-                  <tr><th>Nº Contrato</th><th>Cliente</th><th>CPF</th><th>Consultor</th><th>Tipo</th><th>Situação</th><th>Esteira</th><th>Início</th><th>Convênio</th><th>Liberação</th><th>Produção</th><th>Parcela</th><th>Prazo</th><th>Tabela</th><th>Dívidas</th><th>Atualizado</th></tr>
+                  <tr><th>Nº Contrato</th><th>Cliente</th><th>CPF</th><th>Consultor</th><th>Tipo</th><th>Situação</th><th>Esteira</th><th>Início</th><th>Convênio</th><th>Liberação</th><th>Produção</th><th>Parcela</th><th>Prazo</th><th>Tabela</th><th>Dívidas</th><th>Pend.</th><th>Atualizado</th></tr>
                 </thead>
                 <tbody id="tbodyContratosAdmin"></tbody>
+                <tfoot id="tfootContratosAdmin"></tfoot>
               </table>
             </div>
           </div>
@@ -230,7 +233,7 @@
     }
 
     async function carregarTudo() {
-      const [{ data: consultores }, { data: leads }, { data: tabulacoes }, { data: propostas }, { data: propostasTodas }, { data: sorteios }, { data: coeficientes }, { data: documentos }, { data: tabsEmAndamento }, { data: sorteiosEmAndamento }] = await Promise.all([
+      const [{ data: consultores }, { data: leads }, { data: tabulacoes }, { data: propostas }, { data: propostasTodas }, { data: sorteios }, { data: coeficientes }, { data: documentos }, { data: tabsEmAndamento }, { data: sorteiosEmAndamento }, { data: contratos }] = await Promise.all([
         supabaseClient.from("profiles").select("*").eq("role", "consultor").order("nome"),
         supabaseClient.from("leads").select("*"),
         supabaseClient.from("tabulacoes").select("*, leads(nome, cpf), profiles(nome)").order("criado_em", { ascending: false }).limit(LIMITE_TABULACOES),
@@ -241,6 +244,7 @@
         supabaseClient.from("documentos").select("*, leads(nome, cpf), profiles(nome)").order("criado_em", { ascending: false }).limit(LIMITE_DOCUMENTOS),
         supabaseClient.from("tabulacoes").select("lead_id, criado_em, leads!inner(status)").eq("leads.status", "em_andamento").order("criado_em", { ascending: false }),
         supabaseClient.from("sorteios").select("lead_id, sorteado_em, leads!inner(status)").eq("leads.status", "em_andamento"),
+        supabaseClient.from("contratos_credbase").select("*, profiles(nome)").order("atualizado_em", { ascending: false }),
       ]);
       CONSULTORES = consultores || [];
       LEADS = leads || [];
@@ -252,6 +256,7 @@
       DOCUMENTOS = documentos || [];
       TABS_EM_ANDAMENTO = tabsEmAndamento || [];
       SORTEIOS_EM_ANDAMENTO = sorteiosEmAndamento || [];
+      CONTRATOS = contratos || [];
       renderStats();
       renderConsultores();
       renderTabulacoes();
@@ -261,6 +266,7 @@
       renderDocumentos();
       renderNegociacoes();
       popularFiltroConsultorContrato();
+      renderContratosAdmin();
 
       document.getElementById("btnMaisSorteios").classList.toggle("hidden", SORTEIOS.length < LIMITE_SORTEIOS);
       document.getElementById("btnMaisTabulacoes").classList.toggle("hidden", TABULACOES.length < LIMITE_TABULACOES);
@@ -407,7 +413,7 @@
     function renderConsultores() {
       const tbody = document.getElementById("tbodyConsultores");
       if (CONSULTORES.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="color:var(--muted);">Nenhum consultor cadastrado ainda.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" style="color:var(--muted);">Nenhum consultor cadastrado ainda.</td></tr>`;
         return;
       }
       tbody.innerHTML = CONSULTORES.map((c) => {
@@ -416,16 +422,32 @@
         const tabulados = meusLeads.filter((l) => l.status === "tabulado").length;
         const vendas = PROPOSTAS_TODAS.filter((p) => p.consultor_id === c.id).length;
         const conversao = meusLeads.length > 0 ? ((vendas / meusLeads.length) * 100).toFixed(1) : "0.0";
+        const producao = CONTRATOS.filter((ct) => ct.consultor_id === c.id).reduce((s, ct) => s + (ct.producao || 0), 0);
+        const meta = c.meta_producao || 0;
+        const pct = meta > 0 ? Math.min(100, (producao / meta) * 100) : 0;
         return `<tr>
           <td>${c.nome}</td>
           <td>${meusLeads.length}</td>
           <td>${tabulados}</td>
           <td>${vendas}</td>
           <td>${conversao}%</td>
+          <td>
+            ${formatBRL(producao)}
+            ${meta > 0 ? `<div class="meta-progress"><div class="meta-progress-fill${pct >= 100 ? " completo" : ""}" style="width:${pct}%;"></div></div><span class="hint">${pct.toFixed(0)}% da meta</span>` : ""}
+          </td>
+          <td><input type="number" step="0.01" id="meta_${c.id}" value="${meta}" style="width:110px;"> <button class="btn secondary" style="padding:4px 8px; font-size:12px;" onclick="salvarMeta('${c.id}')">Salvar</button></td>
           <td>${c.ativo ? '<span class="badge tabulado">Ativo</span>' : '<span class="badge novo">Inativo</span>'}</td>
           <td>${emAndamento > 0 ? `<button class="btn secondary" onclick="liberarClientes('${c.id}', '${c.nome.replace(/'/g, "\\'")}', ${emAndamento})">Liberar ${emAndamento} em andamento</button>` : '<span class="hint">-</span>'}</td>
         </tr>`;
       }).join("");
+    }
+
+    async function salvarMeta(consultorId) {
+      const input = document.getElementById(`meta_${consultorId}`);
+      const valor = parseFloat(input.value) || 0;
+      const { error } = await supabaseClient.from("profiles").update({ meta_producao: valor }).eq("id", consultorId);
+      if (error) { alert("Erro ao salvar meta: " + error.message); return; }
+      carregarTudo();
     }
 
     async function liberarClientes(consultorId, nome, quantidade) {
@@ -657,7 +679,7 @@
 
         const semConsultor = contratosParaImportar.filter((c) => !c.consultor_id).length;
         input.value = "";
-        await carregarContratos();
+        await carregarTudo();
         erroEl.style.color = "var(--success)";
         erroEl.textContent = `${contratosParaImportar.length} contrato(s) importado(s)/atualizado(s).` +
           (semConsultor > 0 ? ` ${semConsultor} sem consultor identificado pelo nome do vendedor.` : "");
@@ -670,10 +692,10 @@
 
     async function carregarContratos() {
       const tbody = document.getElementById("tbodyContratosAdmin");
-      tbody.innerHTML = `<tr><td colspan="16" style="color:var(--muted);">Carregando...</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="17" style="color:var(--muted);">Carregando...</td></tr>`;
       const { data, error } = await supabaseClient
         .from("contratos_credbase").select("*, profiles(nome)").order("atualizado_em", { ascending: false });
-      if (error) { tbody.innerHTML = `<tr><td colspan="16" style="color:var(--muted);">Erro ao carregar contratos.</td></tr>`; return; }
+      if (error) { tbody.innerHTML = `<tr><td colspan="17" style="color:var(--muted);">Erro ao carregar contratos.</td></tr>`; return; }
       CONTRATOS = data || [];
       renderContratosAdmin();
     }
@@ -688,18 +710,22 @@
 
     function renderContratosAdmin() {
       const tbody = document.getElementById("tbodyContratosAdmin");
+      const tfoot = document.getElementById("tfootContratosAdmin");
       const busca = document.getElementById("buscaContratoAdmin").value.trim().toLowerCase();
       const filtroConsultor = document.getElementById("filtroConsultorContrato").value;
+      const soPendencias = document.getElementById("filtroSoPendencias").checked;
 
       const filtrados = CONTRATOS.filter((c) => {
         if (filtroConsultor === "__sem__" && c.consultor_id) return false;
         if (filtroConsultor && filtroConsultor !== "__sem__" && c.consultor_id !== filtroConsultor) return false;
+        if (soPendencias && !c.pendencias) return false;
         if (busca && !((c.cliente_nome || "").toLowerCase().includes(busca) || (c.cpf || "").includes(busca) || (c.numero_contrato || "").toLowerCase().includes(busca))) return false;
         return true;
       });
 
       if (filtrados.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="16" style="color:var(--muted);">Nenhum contrato encontrado. Importe a planilha do CredBase acima.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="17" style="color:var(--muted);">Nenhum contrato encontrado. Importe a planilha do CredBase acima.</td></tr>`;
+        tfoot.innerHTML = "";
         return;
       }
 
@@ -720,12 +746,53 @@
           <td>${c.prazo || "-"}</td>
           <td>${c.tabela || "-"}</td>
           <td>${c.dividas ?? "-"}</td>
+          <td>${c.pendencias ? '<span style="color:var(--danger); font-weight:bold;">⚠️ Sim</span>' : "-"}</td>
           <td>${new Date(c.atualizado_em).toLocaleDateString("pt-BR")}</td>
         </tr>
       `).join("");
+
+      const somaLiberacao = filtrados.reduce((s, c) => s + (c.liberacao || 0), 0);
+      const somaProducao = filtrados.reduce((s, c) => s + (c.producao || 0), 0);
+      const somaTotal = filtrados.reduce((s, c) => s + (c.total || 0), 0);
+      tfoot.innerHTML = `
+        <tr>
+          <td colspan="9">Total (${filtrados.length} contrato${filtrados.length === 1 ? "" : "s"})</td>
+          <td>${formatBRL(somaLiberacao)}</td>
+          <td>${formatBRL(somaProducao)}</td>
+          <td colspan="5"></td>
+        </tr>
+      `;
     }
     document.getElementById("buscaContratoAdmin").addEventListener("input", renderContratosAdmin);
     document.getElementById("filtroConsultorContrato").addEventListener("change", renderContratosAdmin);
+    document.getElementById("filtroSoPendencias").addEventListener("change", renderContratosAdmin);
+
+    document.getElementById("btnExportarContratos").addEventListener("click", () => {
+      const busca = document.getElementById("buscaContratoAdmin").value.trim().toLowerCase();
+      const filtroConsultor = document.getElementById("filtroConsultorContrato").value;
+      const soPendencias = document.getElementById("filtroSoPendencias").checked;
+      const filtrados = CONTRATOS.filter((c) => {
+        if (filtroConsultor === "__sem__" && c.consultor_id) return false;
+        if (filtroConsultor && filtroConsultor !== "__sem__" && c.consultor_id !== filtroConsultor) return false;
+        if (soPendencias && !c.pendencias) return false;
+        if (busca && !((c.cliente_nome || "").toLowerCase().includes(busca) || (c.cpf || "").includes(busca) || (c.numero_contrato || "").toLowerCase().includes(busca))) return false;
+        return true;
+      });
+      const linhas = filtrados.map((c) => ({
+        "Nº Contrato": c.numero_contrato, "Cliente": c.cliente_nome, "CPF": c.cpf,
+        "Consultor": c.profiles ? c.profiles.nome : "não identificado",
+        "Tipo": c.tipo, "Situação": c.situacao, "Esteira": c.esteira,
+        "Início": c.data_inicio, "Convênio": c.convenio, "Banco": c.banco,
+        "Liberação": c.liberacao, "Produção": c.producao, "Total": c.total, "Parcela": c.parcela,
+        "Prazo": c.prazo, "Tabela": c.tabela, "Dívidas": c.dividas, "Pendências": c.pendencias ? "Sim" : "Não",
+        "Comentários": c.comentarios, "Atualizado em": new Date(c.atualizado_em).toLocaleString("pt-BR"),
+      }));
+      const ws = XLSX.utils.json_to_sheet(linhas);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Contratos");
+      const dataStr = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `contratos_MM_Credito_${dataStr}.xlsx`);
+    });
 
     // ---------- Exportar propostas ----------
     document.getElementById("btnExportar").addEventListener("click", async () => {
