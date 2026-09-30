@@ -72,7 +72,7 @@
             <option value="recusou">Recusou (sai da base)</option>
           </select>
         </div>
-        <div class="field"><label>Observação (opcional)</label><textarea id="obsRapida" rows="2"></textarea></div>
+        <div class="field"><label>Observação (opcional)</label><textarea id="obsRapida" rows="2"></textarea><button type="button" class="btn secondary btn-mic" data-alvo="obsRapida" style="margin-top:6px;">🎤 Ditar observação</button></div>
         <button class="btn" id="btnConfirmarTabRapida">Confirmar tabulação e buscar outro cliente</button>
         <div class="hint" id="tabRapidaStatus"></div>
       </div>
@@ -286,7 +286,7 @@
           <label>Reagendar para</label>
           <input type="datetime-local" id="reagendadoPara">
         </div>
-        <div class="field"><label>Observação (opcional)</label><textarea id="observacao" rows="2"></textarea></div>
+        <div class="field"><label>Observação (opcional)</label><textarea id="observacao" rows="2"></textarea><button type="button" class="btn secondary btn-mic" data-alvo="observacao" style="margin-top:6px;">🎤 Ditar observação</button></div>
         <button class="btn secondary" id="btnSalvarTabulacao">Tabular como NEGOCIAÇÃO</button>
         <div class="hint" id="tabulacaoStatus"></div>
       </div>
@@ -301,6 +301,33 @@
     </div>
 
     <!-- ===== PESSOAS RELACIONADAS ===== -->
+    <!-- ===== BOLETOS DE QUITAÇÃO ===== -->
+    <div class="card" id="secaoBoletos">
+      <h2 style="margin-top:0;">Boletos de quitação</h2>
+      <p class="hint" style="margin-top:0;">Registre como o boleto foi pedido. O sistema calcula o prazo e avisa quando atrasar.</p>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px;">
+        <div class="field"><label>Forma</label>
+          <select id="bolForma">
+            <option value="contato_interno">Contato interno PKL/Master (2 dias úteis)</option>
+            <option value="procuracao">Procuração em cartório (5 dias úteis)</option>
+            <option value="bacen">Bacen (10 dias úteis)</option>
+            <option value="consumidor">Consumidor (10 dias corridos)</option>
+          </select></div>
+        <div class="field"><label>Banco</label><input type="text" id="bolBanco" placeholder="Ex: Master"></div>
+        <div class="field"><label>Nº do contrato</label><input type="text" id="bolContrato"></div>
+        <div class="field"><label>Data do pedido</label><input type="date" id="bolData"></div>
+      </div>
+      <div class="field"><label>Observação (opcional)</label><input type="text" id="bolObs"></div>
+      <button class="btn" id="btnRegistrarBoleto">Registrar pedido</button>
+      <div class="hint" id="bolStatus"></div>
+      <div class="table-wrap" style="margin-top:14px;">
+        <table>
+          <thead><tr><th>Forma</th><th>Banco / contrato</th><th>Pedido</th><th>Vencimento</th><th>Situação</th><th></th></tr></thead>
+          <tbody id="tbodyBoletos"></tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- ===== HISTÓRICO DO CLIENTE ===== -->
     <div class="card" id="secaoHistorico">
       <h2 style="margin-top:0;">Histórico do cliente</h2>
@@ -368,13 +395,28 @@
 
 
     // Telefone + botão de WhatsApp (celular = 11 dígitos com 9 após o DDD)
+    let MODELOS = [];
+    async function carregarModelos() {
+      const { data } = await supabaseClient.from("modelos_mensagem").select("*").eq("ativo", true).order("ordem");
+      MODELOS = data || [];
+    }
+    function textoModelo() {
+      const sel = document.getElementById("selModeloMsg");
+      const m = MODELOS.find((x) => sel && String(x.id) === sel.value) || MODELOS[0];
+      const base = m ? m.texto : "Olá, {nome}! Aqui é {operador} da MM Crédito.";
+      const primeiroNome = ((LEAD && LEAD.nome) || "").split(" ")[0];
+      const operador = PERFIL ? PERFIL.nome.split(" ")[0] : "";
+      return base.replace(/\{nome\}/g, primeiroNome).replace(/\{operador\}/g, operador);
+    }
+    function abrirWhats(d) {
+      window.open(`https://wa.me/55${d}?text=${encodeURIComponent(textoModelo())}`, "_blank", "noopener");
+      return false;
+    }
     function linkTelefone(tel) {
       const d = String(tel || "").replace(/\D/g, "");
       const ehCelular = d.length === 11 && d[2] === "9";
       if (!ehCelular) return d || "-";
-      const primeiroNome = ((LEAD && LEAD.nome) || "").split(" ")[0];
-      const msg = `Olá${primeiroNome ? ", " + primeiroNome : ""}! Tudo bem? Aqui é ${PERFIL ? PERFIL.nome.split(" ")[0] : ""} da MM Crédito.`;
-      return `${d} <a href="https://wa.me/55${d}?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener" style="background:#25D366; color:#fff; text-decoration:none; padding:2px 8px; border-radius:10px; font-size:11px; margin-left:6px;">WhatsApp</a>`;
+      return `${d} <a href="#" onclick="return abrirWhats('${d}')" style="background:#25D366; color:#fff; text-decoration:none; padding:2px 8px; border-radius:10px; font-size:11px; margin-left:6px;">WhatsApp</a>`;
     }
 
     const params = new URLSearchParams(window.location.search);
@@ -548,6 +590,7 @@
       const { data, error } = await supabaseClient.from("leads").select("*").eq("id", LEAD_ID).single();
       if (error || !data) { alert("Cliente não encontrado ou você não tem acesso a ele."); window.location.href = "consultor.html"; return; }
       LEAD = data;
+      await carregarModelos();
 
       document.getElementById("nomeCliente").textContent = LEAD.nome || "(sem nome)";
       document.getElementById("statusBadge").className = "badge " + LEAD.status;
@@ -557,6 +600,7 @@
         <div><span class="lbl">CPF</span><br>${LEAD.cpf || "-"}</div>
         <div><span class="lbl">PMT</span><br>${formatBRL(LEAD.pmt)}</div>
         <div><span class="lbl">Telefones (base)</span><br>${(LEAD.telefones || []).map(linkTelefone).join("<br>") || "-"}</div>
+        ${MODELOS.length ? `<div><span class="lbl">Mensagem do WhatsApp</span><br><select id="selModeloMsg" style="max-width:320px;">${MODELOS.map((m) => `<option value="${m.id}">${m.titulo}</option>`).join("")}</select></div>` : ""}
         ${LEAD.data_nascimento ? `<div><span class="lbl">Data de nascimento</span><br>${new Date(LEAD.data_nascimento + "T00:00:00").toLocaleDateString("pt-BR")}</div>` : ""}
         ${LEAD.convenio ? `<div><span class="lbl">Convênio do cliente</span><br>${LEAD.convenio === "OUTRO" ? "Outro (sem tabela cadastrada)" : LEAD.convenio}</div>` : ""}
       `;
@@ -584,6 +628,7 @@
       await carregarObservacoes();
       await carregarRelacionadas();
       carregarHistorico();
+      carregarBoletos();
       recalcular();
       await iniciarContato();
     }
@@ -761,27 +806,19 @@
       }
 
       statusEl.style.color = "var(--muted)"; statusEl.textContent = "Salvando...";
-      const { error } = await supabaseClient.from("tabulacoes").insert({
-        lead_id: LEAD.id, consultor_id: PERFIL.id, resultado, observacao: observacao || null, reagendado_para: reagendadoPara,
+      const { data: destino, error } = await supabaseClient.rpc("registrar_tabulacao", {
+        p_lead_id: LEAD.id, p_resultado: resultado, p_observacao: observacao || null, p_reagendado_para: reagendadoPara,
       });
       if (error) { statusEl.style.color = "var(--danger)"; statusEl.textContent = "Erro: " + error.message; return; }
       marcarTabulado();
+      if (destino === "liberado") { window.location.href = "consultor.html"; return; }
 
-      const finais = ["sem_interesse", "recusou", "numero_errado"];
-      const novoStatus = finais.includes(resultado) ? "tabulado" : "em_andamento";
-      await supabaseClient.from("leads").update({ status: novoStatus }).eq("id", LEAD.id);
+      const novoStatus = destino === "tabulado" ? "tabulado" : "em_andamento";
       LEAD.status = novoStatus;
       document.getElementById("statusBadge").className = "badge " + novoStatus;
       document.getElementById("statusBadge").textContent = STATUS_LABEL[novoStatus];
       document.getElementById("btnSairCliente").classList.toggle("hidden", novoStatus !== "em_andamento");
 
-      if (resultado === "nao_atende") {
-        // Não localizou: tabulou, libera o cliente (volta pro fim da fila) e volta pro sorteio.
-        const { error: erroSair } = await supabaseClient.rpc("sair_do_cliente", { p_lead_id: LEAD.id });
-        if (erroSair) { statusEl.style.color = "var(--danger)"; statusEl.textContent = "Tabulado, mas erro ao liberar o cliente: " + erroSair.message; return; }
-        window.location.href = "consultor.html";
-        return;
-      }
       statusEl.style.color = "var(--success)"; statusEl.textContent = "Tabulado como negociação.";
       document.getElementById("resultado").value = "";
       document.getElementById("observacao").value = "";
@@ -791,6 +828,52 @@
       setTimeout(() => { window.location.href = "consultor.html"; }, 1800);
     });
 
+
+
+    // ---------- Boletos de quitação ----------
+    const FORMA_BOLETO = { bacen: "Bacen", consumidor: "Consumidor", procuracao: "Procuração", contato_interno: "Contato interno" };
+    const fmtData = (d) => (d ? new Date(d + "T00:00:00").toLocaleDateString("pt-BR") : "-");
+    async function carregarBoletos() {
+      const tbody = document.getElementById("tbodyBoletos");
+      const { data, error } = await supabaseClient.from("boletos_quitacao").select("*").eq("lead_id", LEAD.id).order("criado_em", { ascending: false });
+      if (error) { tbody.innerHTML = `<tr><td colspan="6" style="color:var(--muted);">Não foi possível carregar os boletos.</td></tr>`; return; }
+      if (!data || data.length === 0) { tbody.innerHTML = `<tr><td colspan="6" style="color:var(--muted);">Nenhum pedido registrado.</td></tr>`; return; }
+      const hoje = new Date().toISOString().slice(0, 10);
+      tbody.innerHTML = data.map((b) => {
+        const atrasado = b.status === "pendente" && b.vencimento < hoje;
+        const sit = b.status === "recebido" ? "Recebido" : b.status === "cancelado" ? "Cancelado" : (atrasado ? "ATRASADO" : "Pendente");
+        const cor = atrasado ? "color:var(--danger); font-weight:bold;" : b.status === "recebido" ? "color:var(--success);" : "";
+        return `<tr>
+          <td>${FORMA_BOLETO[b.forma] || b.forma}</td>
+          <td>${b.banco || "-"}${b.contrato ? " · " + b.contrato : ""}</td>
+          <td>${fmtData(b.solicitado_em)}</td>
+          <td style="${cor}">${fmtData(b.vencimento)}</td>
+          <td style="${cor}">${sit}</td>
+          <td>${b.status === "pendente" ? `<button class="btn secondary" style="padding:4px 10px; font-size:12px;" onclick="marcarBoleto(${b.id}, 'recebido')">Recebido</button>` : ""}</td>
+        </tr>`;
+      }).join("");
+    }
+    async function marcarBoleto(id, status) {
+      const { error } = await supabaseClient.from("boletos_quitacao").update({ status }).eq("id", id);
+      if (error) { alert("Erro: " + error.message); return; }
+      carregarBoletos();
+    }
+    document.getElementById("bolData").value = new Date().toISOString().slice(0, 10);
+    document.getElementById("btnRegistrarBoleto").addEventListener("click", async () => {
+      const st = document.getElementById("bolStatus");
+      const data = document.getElementById("bolData").value;
+      if (!data) { st.style.color = "var(--danger)"; st.textContent = "Informe a data do pedido."; return; }
+      st.style.color = "var(--muted)"; st.textContent = "Salvando...";
+      const { error } = await supabaseClient.from("boletos_quitacao").insert({
+        lead_id: LEAD.id, consultor_id: PERFIL.id, forma: document.getElementById("bolForma").value,
+        banco: document.getElementById("bolBanco").value.trim() || null, contrato: document.getElementById("bolContrato").value.trim() || null,
+        solicitado_em: data, observacao: document.getElementById("bolObs").value.trim() || null,
+      });
+      if (error) { st.style.color = "var(--danger)"; st.textContent = "Erro: " + error.message; return; }
+      st.style.color = "var(--success)"; st.textContent = "Pedido registrado.";
+      ["bolBanco", "bolContrato", "bolObs"].forEach((i) => { document.getElementById(i).value = ""; });
+      carregarBoletos();
+    });
 
     // ---------- Histórico completo do cliente ----------
     const EVENTO_LABEL = { sorteio: "Sorteado", tabulacao: "Tabulação", simulacao: "Simulação", proposta: "Proposta (venda)", liberado: "Liberado para a fila", cadastro_manual: "Cadastrado fora da base" };
@@ -937,11 +1020,11 @@
       });
       if (erroProp) { erroEl.textContent = "Erro ao salvar proposta: " + erroProp.message; btn.disabled = false; btn.textContent = "Tabular como VENDA"; return; }
 
-      await supabaseClient.from("tabulacoes").insert({
-        lead_id: LEAD.id, consultor_id: PERFIL.id, resultado: "vendeu", observacao: null,
+      const { error: erroTab } = await supabaseClient.rpc("registrar_tabulacao", {
+        p_lead_id: LEAD.id, p_resultado: "vendeu", p_observacao: null, p_reagendado_para: null,
       });
+      if (erroTab) { erroEl.textContent = "Proposta salva, mas erro ao tabular a venda: " + erroTab.message; btn.disabled = false; btn.textContent = "Tabular como VENDA"; return; }
       marcarTabulado();
-      await supabaseClient.from("leads").update({ status: "tabulado" }).eq("id", LEAD.id);
       LEAD.status = "tabulado";
       document.getElementById("statusBadge").className = "badge tabulado";
       document.getElementById("statusBadge").textContent = "Tabulado";
@@ -956,7 +1039,7 @@
 
     // ---------- Contato: SIMULAR ou TABULAR (não sai da tela sem tabular) ----------
     let TAB_PENDENTE = false;
-    const SEC_FLUXO = ["secaoSimular", "secaoCadastro", "secaoDocumentos", "secaoFinalizar", "secaoRelacionadas"];
+    const SEC_FLUXO = ["secaoSimular", "secaoCadastro", "secaoDocumentos", "secaoFinalizar", "secaoBoletos", "secaoRelacionadas"];
     function mostrarFluxo(mostrar) { SEC_FLUXO.forEach((id) => { const el = document.getElementById(id); if (el) el.style.display = mostrar ? "" : "none"; }); }
 
     async function verificarTabulacaoPendente() {
@@ -1042,20 +1125,39 @@
       btn.disabled = true;
       statusEl.style.color = "var(--muted)"; statusEl.textContent = "Salvando...";
 
-      const { error } = await supabaseClient.from("tabulacoes").insert({
-        lead_id: LEAD.id, consultor_id: PERFIL.id, resultado, observacao: obs || null,
+      const { error } = await supabaseClient.rpc("registrar_tabulacao", {
+        p_lead_id: LEAD.id, p_resultado: resultado, p_observacao: obs || null, p_reagendado_para: null,
       });
       if (error) { statusEl.style.color = "var(--danger)"; statusEl.textContent = "Erro: " + error.message; btn.disabled = false; return; }
-
-      if (resultado === "nao_atende") {
-        const { error: erroSair } = await supabaseClient.rpc("sair_do_cliente", { p_lead_id: LEAD.id });
-        if (erroSair) { statusEl.style.color = "var(--danger)"; statusEl.textContent = "Tabulado, mas erro ao liberar o cliente: " + erroSair.message; btn.disabled = false; marcarTabulado(); return; }
-      } else {
-        await supabaseClient.from("leads").update({ status: "tabulado" }).eq("id", LEAD.id);
-      }
       marcarTabulado();
       window.location.href = "consultor.html";
     });
+
+
+    // ---------- Tabulação por voz (ditado em português) ----------
+    (function iniciarDitado() {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const botoes = document.querySelectorAll(".btn-mic");
+      if (!SR) { botoes.forEach((b) => b.classList.add("hidden")); return; }
+      botoes.forEach((btn) => {
+        let rec = null;
+        btn.addEventListener("click", () => {
+          if (rec) { rec.stop(); return; }
+          rec = new SR();
+          rec.lang = "pt-BR"; rec.interimResults = false; rec.continuous = true;
+          const alvo = document.getElementById(btn.dataset.alvo);
+          btn.textContent = "⏹ Parar ditado";
+          rec.onresult = (ev) => {
+            let texto = "";
+            for (let i = ev.resultIndex; i < ev.results.length; i++) if (ev.results[i].isFinal) texto += ev.results[i][0].transcript + " ";
+            if (texto) alvo.value = (alvo.value ? alvo.value.trimEnd() + " " : "") + texto.trim();
+          };
+          rec.onerror = () => { btn.textContent = "🎤 Ditar observação"; rec = null; };
+          rec.onend = () => { btn.textContent = "🎤 Ditar observação"; rec = null; };
+          rec.start();
+        });
+      });
+    })();
 
     // ---------- Sair do cliente (devolve pra fila) ----------
     document.getElementById("btnSairCliente").addEventListener("click", async () => {
