@@ -135,6 +135,8 @@
       </table>
       <p class="hint" id="resumoAgrupamento_cartao_beneficio"></p>
 
+      <!-- Empréstimo Consignável oculto: ainda não há tabela. Para voltar, remova display:none. -->
+      <div id="blocoEmprestimo" style="display:none;">
       <h2 style="margin-top:20px;">Empréstimo Consignável</h2>
       <table class="tabela-sim">
         <thead><tr><th></th><th>Dívida</th><th>Parcela</th><th>Prazo</th><th>Convênio / Tabela</th><th>Liberação</th><th>Contrato</th></tr></thead>
@@ -153,11 +155,12 @@
           </tr>
         </tbody>
       </table>
+      </div>
 
       <div class="resumo-simulacao" style="margin-top:20px;">
         <div><span class="lbl">Liberação Cartão de Crédito</span> <span id="totCC">R$ 0,00</span></div>
         <div><span class="lbl">Liberação Cartão Benefício</span> <span id="totCB">R$ 0,00</span></div>
-        <div><span class="lbl">Empréstimo Consignável</span> <span id="totEMP">R$ 0,00</span></div>
+        <div style="display:none;"><span class="lbl">Empréstimo Consignável</span> <span id="totEMP">R$ 0,00</span></div>
         <div style="margin-top:8px; font-size:18px;"><span class="lbl">Total Operação</span> <strong id="totGeral" style="color:var(--gold-soft);">R$ 0,00</strong></div>
       </div>
 
