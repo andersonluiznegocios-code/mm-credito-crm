@@ -119,6 +119,8 @@
           <h1>Histórico de sorteios</h1>
           <div class="card">
             <p class="hint" style="margin-top:0;">Rastro de qual consultor sorteou qual cliente, com data e horário.</p>
+            <div class="field" style="max-width:280px;"><label>Operador</label><select id="filtroSorteioConsultor"><option value="">Todos os operadores</option></select></div>
+            <div class="hint" id="resumoSorteios"></div>
             <div class="table-wrap">
               <table>
                 <thead><tr><th>Consultor</th><th>Cliente</th><th>CPF</th><th>Data/Hora do sorteio</th></tr></thead>
@@ -133,6 +135,8 @@
         <div class="page-panel" id="page-tabulacoes">
           <h1>Tabulações recentes</h1>
           <div class="card">
+            <div class="field" style="max-width:280px;"><label>Operador</label><select id="filtroTabConsultor"><option value="">Todos os operadores</option></select></div>
+            <div class="hint" id="resumoTabulacoes"></div>
             <div class="table-wrap">
               <table>
                 <thead><tr><th>Cliente</th><th>Consultor</th><th>Resultado</th><th>Observação</th><th>Data</th></tr></thead>
@@ -226,6 +230,8 @@
     let CONTRATOS = [];
     let LIMITE_SORTEIOS = 25;
     let LIMITE_TABULACOES = 25;
+    let FILTRO_SORTEIO_CONSULTOR = "";
+    let FILTRO_TAB_CONSULTOR = "";
     let LIMITE_DOCUMENTOS = 25;
 
     function mudarPagina(nome) {
@@ -238,10 +244,10 @@
       const [{ data: consultores }, { data: leads }, { data: tabulacoes }, { data: propostas }, { data: propostasTodas }, { data: sorteios }, { data: coeficientes }, { data: documentos }, { data: tabsEmAndamento }, { data: sorteiosEmAndamento }, { data: contratos }] = await Promise.all([
         supabaseClient.from("profiles").select("*").eq("role", "consultor").order("nome"),
         supabaseClient.from("leads").select("*"),
-        supabaseClient.from("tabulacoes").select("*, leads(nome, cpf), profiles(nome)").order("criado_em", { ascending: false }).limit(LIMITE_TABULACOES),
+        (() => { let q = supabaseClient.from("tabulacoes").select("*, leads(nome, cpf), profiles(nome)").order("criado_em", { ascending: false }).limit(LIMITE_TABULACOES); if (FILTRO_TAB_CONSULTOR) q = q.eq("consultor_id", FILTRO_TAB_CONSULTOR); return q; })(),
         supabaseClient.from("propostas").select("*, leads(nome, cpf, cep, logradouro, numero, complemento, bairro, cidade, uf, telefone_contato, email, banco, agencia, conta, tipo_conta, chave_pix), profiles(nome)").eq("exportado", false),
         supabaseClient.from("propostas").select("id, consultor_id"),
-        supabaseClient.from("sorteios").select("*, leads(nome, cpf), profiles(nome)").order("sorteado_em", { ascending: false }).limit(LIMITE_SORTEIOS),
+        (() => { let q = supabaseClient.from("sorteios").select("*, leads(nome, cpf), profiles(nome)").order("sorteado_em", { ascending: false }).limit(LIMITE_SORTEIOS); if (FILTRO_SORTEIO_CONSULTOR) q = q.eq("consultor_id", FILTRO_SORTEIO_CONSULTOR); return q; })(),
         supabaseClient.from("coeficientes").select("*").order("convenio").order("tabela"),
         supabaseClient.from("documentos").select("*, leads(nome, cpf), profiles(nome)").order("criado_em", { ascending: false }).limit(LIMITE_DOCUMENTOS),
         supabaseClient.from("tabulacoes").select("lead_id, criado_em, leads!inner(status)").eq("leads.status", "em_andamento").order("criado_em", { ascending: false }),
@@ -554,7 +560,22 @@
       carregarTudo();
     });
 
+    function popularFiltrosOperador() {
+      ["filtroSorteioConsultor", "filtroTabConsultor"].forEach((id) => {
+        const sel = document.getElementById(id);
+        const atual = sel.value;
+        sel.innerHTML = `<option value="">Todos os operadores</option>` + CONSULTORES.map((c) => `<option value="${c.id}">${c.nome}</option>`).join("");
+        sel.value = atual;
+      });
+    }
+    document.getElementById("filtroSorteioConsultor").addEventListener("change", (e) => { FILTRO_SORTEIO_CONSULTOR = e.target.value; carregarTudo(); });
+    document.getElementById("filtroTabConsultor").addEventListener("change", (e) => { FILTRO_TAB_CONSULTOR = e.target.value; carregarTudo(); });
+
     function renderTabulacoes() {
+      popularFiltrosOperador();
+      const resumo = {};
+      TABULACOES.forEach((t) => { const r = RESULTADO_LABEL[t.resultado] || t.resultado; resumo[r] = (resumo[r] || 0) + 1; });
+      document.getElementById("resumoTabulacoes").textContent = TABULACOES.length ? "Nesta lista: " + Object.entries(resumo).map(([k, v]) => `${k}: ${v}`).join(" · ") : "";
       const tbody = document.getElementById("tbodyTabulacoes");
       if (TABULACOES.length === 0) {
         tbody.innerHTML = `<tr><td colspan="5" style="color:var(--muted);">Nenhuma tabulação registrada ainda.</td></tr>`;
@@ -572,6 +593,7 @@
     }
 
     function renderSorteios() {
+      document.getElementById("resumoSorteios").textContent = SORTEIOS.length ? `${SORTEIOS.length} sorteio(s) nesta lista.` : "";
       const tbody = document.getElementById("tbodySorteios");
       if (SORTEIOS.length === 0) {
         tbody.innerHTML = `<tr><td colspan="4" style="color:var(--muted);">Nenhum sorteio registrado ainda.</td></tr>`;
