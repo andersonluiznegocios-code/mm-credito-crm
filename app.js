@@ -37,7 +37,7 @@ async function logout() {
 // ---------- CSV de leads ----------
 // Espera colunas: CPF, NOME, PMT, TELEFONE (telefones separados por ;)
 // Formato igual ao que a MM Crédito já usa nas bases da prefeitura.
-function normalizarTexto(s) {
+function normalizarCabecalho(s) {
   return String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9]+/g, " ").trim();
 }
 
@@ -62,7 +62,7 @@ function parseLeadsCSV(texto) {
   const delim = [",", ";", "\t", "|"]
     .map((d) => ({ d, n: parseCsvLine(linhas[0], d).length }))
     .sort((a, b) => b.n - a.n)[0].d;
-  const header = parseCsvLine(linhas[0], delim).map((h) => normalizarTexto(h));
+  const header = parseCsvLine(linhas[0], delim).map((h) => normalizarCabecalho(h));
   const achar = (...nomes) => header.findIndex((h) => nomes.includes(h));
   const idxCpf = achar("CPF", "CPF CNPJ", "CPFCNPJ", "DOCUMENTO");
   const idxNome = achar("NOME", "NOME CLIENTE", "NOME DO CLIENTE", "CLIENTE");
