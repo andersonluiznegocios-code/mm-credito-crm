@@ -19,6 +19,7 @@
   <div class="app-shell">
     <div class="sidebar">
       <div class="sidebar-item ativo" data-pagina="sorteio" onclick="mudarPagina('sorteio')">🎲 Sorteio</div>
+      <div class="sidebar-item" data-pagina="novocliente" onclick="mudarPagina('novocliente')">➕ Novo cliente (fora da base)</div>
       <div class="sidebar-item" data-pagina="contratos" onclick="mudarPagina('contratos')">📄 Contratos</div>
     </div>
 
@@ -80,6 +81,25 @@
           </div>
         </div>
 
+        <!-- ===== PÁGINA: NOVO CLIENTE (FORA DA BASE) ===== -->
+        <div class="page-panel" id="page-novocliente">
+          <h1>Novo cliente (fora da base)</h1>
+          <p class="subtitle">Use quando for atender um cliente que não veio da base. Todos os campos são obrigatórios. O cliente fica registrado no CRM e entra no mailing futuro.</p>
+          <div class="card">
+            <div class="field"><label>Nome completo</label><input type="text" id="ncNome" autocomplete="off"></div>
+            <div class="field"><label>CPF</label><input type="text" id="ncCpf" inputmode="numeric" placeholder="Somente números" maxlength="14" autocomplete="off"></div>
+            <div class="field"><label>Data de nascimento</label><input type="date" id="ncNascimento"></div>
+            <div class="field"><label>PMT (parcela atual, R$)</label><input type="number" step="0.01" min="0" id="ncPmt"></div>
+            <div class="field"><label>Telefone(s) — com DDD (separe por ; se houver mais de um)</label><input type="text" id="ncTelefones" placeholder="11999998888;1133334444" autocomplete="off"></div>
+            <div class="field"><label>Convênio do cliente</label>
+              <select id="ncConvenio"><option value="">Selecione...</option></select>
+              <div class="hint" id="ncConvenioAviso"></div>
+            </div>
+            <button class="btn" id="btnCriarCliente">Cadastrar e abrir atendimento</button>
+            <div class="error-msg" id="erroNovoCliente"></div>
+          </div>
+        </div>
+
         <!-- ===== PÁGINA: CONTRATOS ===== -->
         <div class="page-panel" id="page-contratos">
           <h1>Meus contratos</h1>
@@ -118,6 +138,63 @@
       document.querySelectorAll(".page-panel").forEach((el) => el.classList.toggle("ativa", el.id === "page-" + nome));
       if (nome === "contratos" && CONTRATOS_CACHE.length === 0) carregarContratos();
     }
+
+
+    // ---------- Novo cliente (fora da base) ----------
+    const OUTRO_CONVENIO = "__outro__";
+    function cpfValido(cpf) {
+      const d = cpf.replace(/\D/g, "");
+      if (d.length !== 11 || /^(\d)\1+$/.test(d)) return false;
+      for (let t = 9; t < 11; t++) {
+        let soma = 0;
+        for (let i = 0; i < t; i++) soma += parseInt(d[i], 10) * (t + 1 - i);
+        const dv = ((soma * 10) % 11) % 10;
+        if (dv !== parseInt(d[t], 10)) return false;
+      }
+      return true;
+    }
+
+    async function carregarConveniosNovoCliente() {
+      const { data } = await supabaseClient.from("coeficientes").select("convenio");
+      const convenios = [...new Set((data || []).map((c) => c.convenio))].sort();
+      document.getElementById("ncConvenio").innerHTML =
+        `<option value="">Selecione...</option>` +
+        convenios.map((c) => `<option value="${String(c).replace(/"/g, "&quot;")}">${c}</option>`).join("") +
+        `<option value="${OUTRO_CONVENIO}">Outro (não trabalhamos) — só registrar/tabular</option>`;
+    }
+
+    document.getElementById("ncConvenio").addEventListener("change", (e) => {
+      document.getElementById("ncConvenioAviso").textContent =
+        e.target.value === OUTRO_CONVENIO ? "Sem tabela cadastrada para esse convênio: o cliente fica registrado e só poderá ser tabulado, não simulado." : "";
+    });
+
+    document.getElementById("btnCriarCliente").addEventListener("click", async () => {
+      const erroEl = document.getElementById("erroNovoCliente");
+      erroEl.textContent = ""; erroEl.style.color = "";
+      const nome = document.getElementById("ncNome").value.trim().replace(/\s+/g, " ");
+      const cpf = document.getElementById("ncCpf").value.replace(/\D/g, "");
+      const nasc = document.getElementById("ncNascimento").value;
+      const pmt = parseFloat(document.getElementById("ncPmt").value);
+      const telefones = document.getElementById("ncTelefones").value.split(";").map((t) => t.replace(/\D/g, "")).filter(Boolean);
+      const convSel = document.getElementById("ncConvenio").value;
+
+      if (nome.split(" ").length < 2) { erroEl.textContent = "Informe o nome completo."; return; }
+      if (!cpfValido(cpf)) { erroEl.textContent = "CPF inválido."; return; }
+      if (!nasc || new Date(nasc) >= new Date() || new Date(nasc) < new Date("1900-01-01")) { erroEl.textContent = "Informe uma data de nascimento válida."; return; }
+      if (!pmt || pmt <= 0) { erroEl.textContent = "Informe a PMT (maior que zero)."; return; }
+      if (telefones.length === 0 || telefones.some((t) => t.length < 10 || t.length > 11)) { erroEl.textContent = "Informe telefone(s) com DDD (10 ou 11 dígitos)."; return; }
+      if (!convSel) { erroEl.textContent = "Selecione o convênio do cliente."; return; }
+
+      const btn = document.getElementById("btnCriarCliente");
+      btn.disabled = true; btn.textContent = "Cadastrando...";
+      const { data, error } = await supabaseClient.rpc("criar_cliente_manual", {
+        p_cpf: cpf, p_nome: nome, p_pmt: pmt, p_telefones: telefones,
+        p_data_nascimento: nasc, p_convenio: convSel === OUTRO_CONVENIO ? "OUTRO" : convSel,
+      });
+      btn.disabled = false; btn.textContent = "Cadastrar e abrir atendimento";
+      if (error) { erroEl.textContent = "Erro ao cadastrar: " + error.message; return; }
+      window.location.href = `cliente.html?id=${data.id}`;
+    });
 
     async function carregarLeads() {
       const { data, error } = await supabaseClient
@@ -317,6 +394,7 @@
       PERFIL = auth.profile;
       document.getElementById("whoami").textContent = PERFIL.nome;
       carregarLeads();
+      carregarConveniosNovoCliente();
       atualizarDisponiveis();
       carregarRanking();
       carregarContratos();
