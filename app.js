@@ -67,7 +67,9 @@ function parseLeadsCSV(texto) {
   const idxCpf = achar("CPF", "CPF CNPJ", "CPFCNPJ", "DOCUMENTO");
   const idxNome = achar("NOME", "NOME CLIENTE", "NOME DO CLIENTE", "CLIENTE");
   const idxPmt = achar("PMT", "PARCELA", "VALOR PARCELA");
-  const idxTel = achar("TELEFONE", "TELEFONES", "FONE", "CELULAR", "TEL");
+  // aceita uma coluna de telefones (separados por ; ou /) ou várias colunas: TELEFONE 1, TELEFONE 2, ...
+  const idxsTel = header.map((h, i) => (/^(TELEFONES?|FONES?|CELULAR|TEL)( \d+)?$/.test(h) ? i : -1)).filter((i) => i >= 0);
+  const idxTel = idxsTel.length ? idxsTel[0] : -1;
   const idxConv = achar("CONVENIO");
   const idxNasc = achar("DATA NASCIMENTO", "NASCIMENTO", "DATA DE NASCIMENTO", "DT NASCIMENTO");
 
@@ -86,10 +88,15 @@ function parseLeadsCSV(texto) {
     const pmt = pmtRaw && pmtRaw !== "NULL"
       ? parseFloat(pmtRaw.replace(/\./g, "").replace(",", "."))
       : null;
-    const telRaw = (campos[idxTel] || "").trim();
-    const telefones = telRaw && telRaw !== "NULL"
-      ? telRaw.split(/[;\/]/).map((t) => t.trim()).filter(Boolean)
-      : [];
+    const telefones = [];
+    for (const it of idxsTel) {
+      const telRaw = (campos[it] || "").trim();
+      if (!telRaw || telRaw === "NULL") continue;
+      for (const t of telRaw.split(/[;\/]/)) {
+        const tel = t.trim();
+        if (tel && !telefones.includes(tel)) telefones.push(tel);
+      }
+    }
     if (!cpf) continue;
     const lead = { cpf, nome, pmt: Number.isNaN(pmt) ? null : pmt, telefones, status: "novo" };
     if (idxConv >= 0) {
