@@ -244,12 +244,12 @@
 
       <div class="finalizar-bloco">
         <h3 style="color:var(--gold-soft);">🔁 Ainda não fechou</h3>
-        <p class="hint" style="margin-top:0;">Fica com você (não volta pra fila). Se passar de 3 dias sem novo contato, aparece pro admin liberar.</p>
+        <p class="hint" style="margin-top:0;">Falou com o cliente e ele vai pensar/reagendar: fica com você. Não localizou: tabule como "Não localizei" e o cliente é liberado e volta pro fim da fila.</p>
         <div class="field">
           <label>Resultado do contato</label>
           <select id="resultado">
             <option value="">Selecione...</option>
-            <option value="nao_atende">Não atende</option>
+            <option value="nao_atende">Não localizei / não atende (libera o cliente e volta pro fim da fila)</option>
             <option value="vai_pensar">Vai pensar</option>
             <option value="reagendar">Reagendar</option>
             <option value="sem_interesse">Sem interesse (sai da base)</option>
@@ -722,6 +722,13 @@
       document.getElementById("statusBadge").textContent = STATUS_LABEL[novoStatus];
       document.getElementById("btnSairCliente").classList.toggle("hidden", novoStatus !== "em_andamento");
 
+      if (resultado === "nao_atende") {
+        // Não localizou: tabulou, libera o cliente (volta pro fim da fila) e volta pro sorteio.
+        const { error: erroSair } = await supabaseClient.rpc("sair_do_cliente", { p_lead_id: LEAD.id });
+        if (erroSair) { statusEl.style.color = "var(--danger)"; statusEl.textContent = "Tabulado, mas erro ao liberar o cliente: " + erroSair.message; return; }
+        window.location.href = "consultor.html";
+        return;
+      }
       statusEl.style.color = "var(--success)"; statusEl.textContent = "Tabulado como negociação.";
       document.getElementById("resultado").value = "";
       document.getElementById("observacao").value = "";
