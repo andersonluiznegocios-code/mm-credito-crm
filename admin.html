@@ -20,6 +20,10 @@
     <div class="sidebar">
       <div class="sidebar-item ativo" data-pagina="visao-geral" onclick="mudarPagina('visao-geral')">📊 Visão geral</div>
       <div class="sidebar-item" data-pagina="funil" onclick="mudarPagina('funil')">📈 Funil</div>
+      <div class="sidebar-item" data-pagina="horarios" onclick="mudarPagina('horarios')">⏱ Horários</div>
+      <div class="sidebar-item" data-pagina="boletos" onclick="mudarPagina('boletos')">🧾 Boletos</div>
+      <div class="sidebar-item" data-pagina="reativacao" onclick="mudarPagina('reativacao')">♻ Reativação</div>
+      <div class="sidebar-item" data-pagina="mensagens" onclick="mudarPagina('mensagens')">💬 Mensagens</div>
       <div class="sidebar-item" data-pagina="clientes" onclick="mudarPagina('clientes')">👥 Clientes</div>
       <div class="sidebar-item" data-pagina="contratos" onclick="mudarPagina('contratos')">📄 Contratos</div>
       <div class="sidebar-item" data-pagina="sorteios" onclick="mudarPagina('sorteios')">🎲 Sorteios</div>
@@ -73,9 +77,16 @@
           <h2>Negociações em andamento</h2>
           <div class="card">
             <p class="hint" style="margin-top:0;">Clientes que algum consultor está negociando (tabulou como "negociação", não como venda). Se passar de 3 dias sem novo contato, aparece destacado — você pode liberar de volta pra fila.</p>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:10px;">
+              <span class="hint" style="margin:0;">Parados há mais de</span>
+              <input type="number" min="0" id="negDiasLote" value="3" style="width:70px;"> <span class="hint" style="margin:0;">dia(s)</span>
+              <button class="btn secondary" id="btnDevolverParados">Devolver todos esses para a fila</button>
+              <button class="btn secondary" id="btnDevolverMarcados">Devolver marcados para a fila</button>
+              <span class="hint" id="negLoteMsg"></span>
+            </div>
             <div class="table-wrap">
               <table>
-                <thead><tr><th>Cliente</th><th>Consultor</th><th>Última atividade</th><th>Tempo parado</th><th></th></tr></thead>
+                <thead><tr><th><input type="checkbox" id="negSelTodos" title="Selecionar todos"></th><th>Cliente</th><th>Consultor</th><th>Última atividade</th><th>Tempo parado</th><th></th></tr></thead>
                 <tbody id="tbodyNegociacoes"></tbody>
               </table>
             </div>
@@ -143,6 +154,15 @@
             <div id="funilBarras"></div>
           </div>
           <div class="card">
+            <h2 style="margin-top:0;">🎯 Metas diárias por operador</h2>
+            <p class="hint" style="margin-top:0;">Aparecem como barra de progresso na tela de cada operador. Use 0 para não ter meta.</p>
+            <div class="table-wrap"><table>
+              <thead><tr><th>Operador</th><th>Meta de atendimentos/dia</th><th>Meta de simulações/dia</th><th></th></tr></thead>
+              <tbody id="tbodyMetasDia"></tbody>
+            </table></div>
+            <div class="hint" id="metasDiaMsg"></div>
+          </div>
+          <div class="card">
             <div class="table-wrap">
               <table>
                 <thead><tr><th>Operador</th><th>Atendimentos</th><th>Não localizados</th><th>Contatos</th><th>% contato</th><th>Simulações</th><th>% simulou</th><th>Vendas</th><th>% venda</th></tr></thead>
@@ -152,6 +172,92 @@
             </div>
             <p class="hint">Atendimentos = clientes sorteados + cadastrados fora da base. Contato = falou com o cliente (simulou, vai pensar, reagendou, sem interesse, recusou ou vendeu). % contato = contatos ÷ atendimentos; % simulou = simulações ÷ contatos; % venda = vendas ÷ simulações.</p>
           </div>
+        </div>
+
+        <!-- ===== PÁGINA: HORÁRIOS ===== -->
+        <div class="page-panel" id="page-horarios">
+          <h1>Produtividade por horário</h1>
+          <p class="subtitle">Em que horas cada operador mais contata e mais vende (horário de Brasília). Quanto mais forte a cor, maior o número.</p>
+          <div class="card">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px;">
+              <div class="field"><label>Período</label>
+                <select id="horPeriodo"><option value="7">Últimos 7 dias</option><option value="30" selected>Últimos 30 dias</option><option value="90">Últimos 90 dias</option></select></div>
+              <div class="field"><label>Medida</label>
+                <select id="horMedida"><option value="contatos">Contatos</option><option value="vendas">Vendas</option><option value="atendimentos">Atendimentos (sorteios)</option></select></div>
+            </div>
+            <button class="btn" id="btnHorarios">Atualizar</button>
+            <div class="error-msg" id="erroHorarios"></div>
+          </div>
+          <div class="card"><div class="table-wrap" id="horTabela"></div>
+            <p class="hint" id="horMelhores"></p></div>
+        </div>
+
+        <!-- ===== PÁGINA: BOLETOS ===== -->
+        <div class="page-panel" id="page-boletos">
+          <h1>Boletos de quitação</h1>
+          <p class="subtitle">Pedidos de boleto por forma de obtenção, com prazo e alerta de atraso (feriados não entram no cálculo dos dias úteis).</p>
+          <div class="card">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px;">
+              <div class="field"><label>Situação</label>
+                <select id="bolFiltroStatus"><option value="pendente">Pendentes</option><option value="atrasado">Atrasados</option><option value="recebido">Recebidos</option><option value="">Todos</option></select></div>
+              <div class="field"><label>Forma</label>
+                <select id="bolFiltroForma"><option value="">Todas</option><option value="bacen">Bacen</option><option value="consumidor">Consumidor</option><option value="procuracao">Procuração</option><option value="contato_interno">Contato interno</option></select></div>
+              <div class="field"><label>Operador</label><select id="bolFiltroOperador"><option value="">Todos</option></select></div>
+            </div>
+            <button class="btn" id="btnFiltrarBoletos">Filtrar</button>
+            <span class="hint" id="bolResumo"></span>
+            <div class="error-msg" id="erroBoletos"></div>
+          </div>
+          <div class="card"><div class="table-wrap">
+            <table>
+              <thead><tr><th>Cliente</th><th>Operador</th><th>Forma</th><th>Banco / contrato</th><th>Pedido</th><th>Vencimento</th><th>Situação</th><th></th></tr></thead>
+              <tbody id="tbodyBoletosAdmin"></tbody>
+            </table></div></div>
+        </div>
+
+        <!-- ===== PÁGINA: REATIVAÇÃO ===== -->
+        <div class="page-panel" id="page-reativacao">
+          <h1>Mailing de reativação</h1>
+          <p class="subtitle">Clientes tabulados há mais de X dias, para uma nova abordagem. Baixe a lista ou devolva os selecionados para a fila.</p>
+          <div class="card">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px;">
+              <div class="field"><label>Há mais de (dias)</label><input type="number" min="0" id="reaDias" value="60"></div>
+              <div class="field"><label>Convênio</label><select id="reaConvenio"><option value="">Todos</option></select></div>
+            </div>
+            <div style="margin:6px 0 10px;">
+              <label style="margin-right:14px;"><input type="checkbox" class="rea-res" value="vai_pensar" checked> Vai pensar</label>
+              <label style="margin-right:14px;"><input type="checkbox" class="rea-res" value="sem_interesse" checked> Sem interesse</label>
+              <label style="margin-right:14px;"><input type="checkbox" class="rea-res" value="recusou"> Recusou</label>
+              <label style="margin-right:14px;"><input type="checkbox" class="rea-res" value="reagendar"> Reagendar</label>
+            </div>
+            <button class="btn" id="btnBuscarReativacao">Buscar</button>
+            <button class="btn secondary" id="btnExportarReativacao">Baixar Excel</button>
+            <button class="btn secondary" id="btnDevolverReativacao">Devolver selecionados para a fila</button>
+            <span class="hint" id="reaResumo"></span>
+            <div class="error-msg" id="erroReativacao"></div>
+          </div>
+          <div class="card"><div class="table-wrap">
+            <table>
+              <thead><tr><th><input type="checkbox" id="reaSelTodos"></th><th>Nome</th><th>CPF</th><th>Telefones</th><th>Convênio</th><th>Último resultado</th><th>Quando</th><th>Operador</th></tr></thead>
+              <tbody id="tbodyReativacao"></tbody>
+            </table></div></div>
+        </div>
+
+        <!-- ===== PÁGINA: MENSAGENS ===== -->
+        <div class="page-panel" id="page-mensagens">
+          <h1>Modelos de mensagem (WhatsApp)</h1>
+          <p class="subtitle">Textos que os operadores escolhem ao abrir o WhatsApp. Use {nome} para o primeiro nome do cliente e {operador} para o nome do operador.</p>
+          <div class="card">
+            <div class="field"><label>Título</label><input type="text" id="msgTitulo" placeholder="Ex: Primeiro contato"></div>
+            <div class="field"><label>Texto</label><textarea id="msgTexto" rows="3" placeholder="Olá, {nome}! Aqui é {operador} da MM Crédito..."></textarea></div>
+            <button class="btn" id="btnSalvarMensagem">Adicionar modelo</button>
+            <div class="error-msg" id="erroMensagens"></div>
+          </div>
+          <div class="card"><div class="table-wrap">
+            <table>
+              <thead><tr><th>Ordem</th><th>Título</th><th>Texto</th><th></th></tr></thead>
+              <tbody id="tbodyMensagens"></tbody>
+            </table></div></div>
         </div>
 
         <!-- ===== PÁGINA: CLIENTES ===== -->
@@ -282,6 +388,11 @@
             <p class="hint" style="margin-top:0;">Gera um Excel com todas as abas: clientes, tabulações, propostas, sorteios, documentos e contratos.</p>
             <button class="btn secondary" id="btnExportarTudo">Baixar Excel completo</button>
           </div>
+          <div class="card">
+            <h2 style="margin-top:0;">Backups automáticos (toda semana)</h2>
+            <p class="hint" style="margin-top:0;">Cópia completa dos dados guardada toda semana, num arquivo privado. Os 8 mais recentes ficam aqui.</p>
+            <div id="listaBackups"></div>
+          </div>
         </div>
 
       </div>
@@ -329,7 +440,12 @@
       document.querySelectorAll(".page-panel").forEach((el) => el.classList.toggle("ativa", el.id === "page-" + nome));
       if (nome === "contratos" && CONTRATOS.length === 0) carregarContratos();
       if (nome === "clientes") carregarClientes();
-      if (nome === "funil") carregarFunil();
+      if (nome === "funil") { carregarFunil(); renderMetasDia(); }
+      if (nome === "horarios") carregarHorarios();
+      if (nome === "boletos") carregarBoletosAdmin();
+      if (nome === "reativacao") buscarReativacao();
+      if (nome === "mensagens") carregarMensagens();
+      if (nome === "backup") carregarBackups();
       if (nome === "sorteios") carregarDiasRetorno();
     }
 
@@ -420,6 +536,201 @@
       document.querySelectorAll(".funil-custom").forEach((el) => el.classList.toggle("hidden", e.target.value !== "custom"));
       if (e.target.value !== "custom") carregarFunil();
     });
+
+
+    // ---------- Metas diárias ----------
+    function renderMetasDia() {
+      document.getElementById("tbodyMetasDia").innerHTML = CONSULTORES.map((c) => `
+        <tr><td>${c.nome}</td>
+        <td><input type="number" min="0" id="mda_${c.id}" value="${c.meta_dia_atendimentos || 0}" style="width:110px;"></td>
+        <td><input type="number" min="0" id="mds_${c.id}" value="${c.meta_dia_simulacoes || 0}" style="width:110px;"></td>
+        <td><button class="btn secondary" style="padding:4px 10px; font-size:12px;" onclick="salvarMetaDia('${c.id}')">Salvar</button></td></tr>`).join("");
+    }
+    async function salvarMetaDia(id) {
+      const msg = document.getElementById("metasDiaMsg");
+      const a = parseInt(document.getElementById(`mda_${id}`).value, 10) || 0;
+      const s = parseInt(document.getElementById(`mds_${id}`).value, 10) || 0;
+      const { error } = await supabaseClient.from("profiles").update({ meta_dia_atendimentos: a, meta_dia_simulacoes: s }).eq("id", id);
+      msg.style.color = error ? "var(--danger)" : "var(--success)";
+      msg.textContent = error ? "Erro: " + error.message : "Meta salva.";
+    }
+
+    // ---------- Devolver clientes parados para a fila (em lote) ----------
+    async function devolverParaFila(ids, rotulo) {
+      const msg = document.getElementById("negLoteMsg");
+      if (ids.length === 0) { msg.style.color = "var(--danger)"; msg.textContent = " Nenhum cliente nesse critério."; return; }
+      if (!confirm(`Devolver ${ids.length} cliente(s) ${rotulo} para a fila? Qualquer operador poderá sortear.`)) return;
+      let feitos = 0;
+      for (let i = 0; i < ids.length; i += 200) {
+        const { data, error } = await supabaseClient.from("leads")
+          .update({ atribuido_a: null, status: "novo", fila_em: new Date().toISOString(), disponivel_em: null })
+          .in("id", ids.slice(i, i + 200)).eq("status", "em_andamento").select("id");
+        if (error) { msg.style.color = "var(--danger)"; msg.textContent = " Erro: " + error.message; return; }
+        feitos += (data || []).length;
+      }
+      msg.style.color = "var(--success)"; msg.textContent = ` ${feitos} cliente(s) devolvido(s) para a fila.`;
+      carregarTudo();
+    }
+    document.getElementById("btnDevolverMarcados").addEventListener("click", () =>
+      devolverParaFila([...document.querySelectorAll(".neg-sel:checked")].map((e) => parseInt(e.value, 10)), "marcados"));
+    document.getElementById("btnDevolverParados").addEventListener("click", () => {
+      const min = parseInt(document.getElementById("negDiasLote").value, 10) || 0;
+      devolverParaFila([...document.querySelectorAll(".neg-sel")].filter((e) => e.dataset.dias !== "" && parseInt(e.dataset.dias, 10) >= min).map((e) => parseInt(e.value, 10)), `parados há ${min}+ dia(s)`);
+    });
+    document.getElementById("negSelTodos").addEventListener("change", (e) => { document.querySelectorAll(".neg-sel").forEach((c) => { c.checked = e.target.checked; }); });
+
+    // ---------- Produtividade por horário ----------
+    async function carregarHorarios() {
+      const erroEl = document.getElementById("erroHorarios"); erroEl.textContent = "";
+      const dias = parseInt(document.getElementById("horPeriodo").value, 10);
+      const fim = new Date(); fim.setHours(0, 0, 0, 0); fim.setDate(fim.getDate() + 1);
+      const ini = new Date(fim); ini.setDate(ini.getDate() - dias);
+      const { data, error } = await supabaseClient.rpc("produtividade_por_hora", { p_ini: ini.toISOString(), p_fim: fim.toISOString() });
+      if (error) { erroEl.textContent = "Erro: " + error.message; return; }
+      const medida = document.getElementById("horMedida").value;
+      const porOp = {};
+      (data || []).forEach((r) => { (porOp[r.operador_nome] = porOp[r.operador_nome] || {})[r.hora] = Number(r[medida]) || 0; });
+      CONSULTORES.forEach((c) => { porOp[c.nome] = porOp[c.nome] || {}; });
+      const horas = [...Array(16).keys()].map((i) => i + 6); // 06h às 21h
+      let max = 1; const totalHora = {};
+      Object.values(porOp).forEach((h) => horas.forEach((x) => { max = Math.max(max, h[x] || 0); totalHora[x] = (totalHora[x] || 0) + (h[x] || 0); }));
+      const cel = (v) => `<td style="text-align:center; background:rgba(212,175,55,${v ? 0.15 + 0.85 * (v / max) : 0}); color:${v / max > 0.6 ? "#0B1026" : "inherit"}; font-weight:${v ? 700 : 400};">${v || ""}</td>`;
+      document.getElementById("horTabela").innerHTML = `<table><thead><tr><th>Operador</th>${horas.map((h) => `<th style="text-align:center;">${h}h</th>`).join("")}</tr></thead><tbody>
+        ${Object.entries(porOp).sort((x, y) => x[0].localeCompare(y[0])).map(([nome, h]) => `<tr><td>${nome}</td>${horas.map((x) => cel(h[x] || 0)).join("")}</tr>`).join("")}
+        <tr><td><strong>Equipe</strong></td>${horas.map((x) => cel(totalHora[x] || 0)).join("")}</tr></tbody></table>`;
+      const top = horas.map((x) => [x, totalHora[x] || 0]).sort((p, q) => q[1] - p[1]).filter((p) => p[1] > 0).slice(0, 3);
+      document.getElementById("horMelhores").textContent = top.length ? "Melhores horários da equipe: " + top.map(([h, v]) => `${h}h (${v})`).join(", ") + "." : "Sem dados no período.";
+    }
+    document.getElementById("btnHorarios").addEventListener("click", carregarHorarios);
+
+    // ---------- Boletos de quitação (admin) ----------
+    const FORMA_BOLETO = { bacen: "Bacen", consumidor: "Consumidor", procuracao: "Procuração", contato_interno: "Contato interno" };
+    async function carregarBoletosAdmin() {
+      const sel = document.getElementById("bolFiltroOperador");
+      if (sel.options.length <= 1) sel.innerHTML = `<option value="">Todos</option>` + CONSULTORES.map((c) => `<option value="${c.id}">${c.nome}</option>`).join("");
+      const erroEl = document.getElementById("erroBoletos"); erroEl.textContent = "";
+      const hoje = new Date().toISOString().slice(0, 10);
+      const st = document.getElementById("bolFiltroStatus").value;
+      let q = supabaseClient.from("boletos_quitacao").select("*, leads(nome, cpf), profiles(nome)", { count: "exact" }).order("vencimento").limit(500);
+      if (st === "pendente") q = q.eq("status", "pendente");
+      if (st === "atrasado") q = q.eq("status", "pendente").lt("vencimento", hoje);
+      if (st === "recebido") q = q.eq("status", "recebido");
+      const forma = document.getElementById("bolFiltroForma").value; if (forma) q = q.eq("forma", forma);
+      const op = sel.value; if (op) q = q.eq("consultor_id", op);
+      const { data, error, count } = await q;
+      if (error) { erroEl.textContent = "Erro: " + error.message; return; }
+      const atras = (data || []).filter((b) => b.status === "pendente" && b.vencimento < hoje).length;
+      document.getElementById("bolResumo").textContent = ` ${count ?? data.length} pedido(s) · ${atras} atrasado(s) nesta lista`;
+      document.getElementById("tbodyBoletosAdmin").innerHTML = (data || []).map((b) => {
+        const atrasado = b.status === "pendente" && b.vencimento < hoje;
+        const cor = atrasado ? "color:var(--danger); font-weight:bold;" : b.status === "recebido" ? "color:var(--success);" : "";
+        const d = (x) => (x ? new Date(x + "T00:00:00").toLocaleDateString("pt-BR") : "-");
+        return `<tr><td>${b.leads ? (b.leads.nome || b.leads.cpf) : "-"}</td><td>${b.profiles ? b.profiles.nome : "-"}</td><td>${FORMA_BOLETO[b.forma] || b.forma}</td>
+          <td>${b.banco || "-"}${b.contrato ? " · " + b.contrato : ""}</td><td>${d(b.solicitado_em)}</td><td style="${cor}">${d(b.vencimento)}</td>
+          <td style="${cor}">${b.status === "recebido" ? "Recebido" : b.status === "cancelado" ? "Cancelado" : atrasado ? "ATRASADO" : "Pendente"}</td>
+          <td>${b.status === "pendente" ? `<button class="btn secondary" style="padding:4px 10px; font-size:12px;" onclick="marcarBoletoAdmin(${b.id}, 'recebido')">Recebido</button> <button class="btn secondary" style="padding:4px 10px; font-size:12px;" onclick="marcarBoletoAdmin(${b.id}, 'cancelado')">Cancelar</button>` : ""}</td></tr>`;
+      }).join("") || `<tr><td colspan="8" style="color:var(--muted);">Nenhum pedido.</td></tr>`;
+    }
+    async function marcarBoletoAdmin(id, status) {
+      const { error } = await supabaseClient.from("boletos_quitacao").update({ status }).eq("id", id);
+      if (error) { alert("Erro: " + error.message); return; }
+      carregarBoletosAdmin();
+    }
+    document.getElementById("btnFiltrarBoletos").addEventListener("click", carregarBoletosAdmin);
+
+    // ---------- Mailing de reativação ----------
+    let REATIVACAO = [];
+    async function buscarReativacao() {
+      const erroEl = document.getElementById("erroReativacao"); erroEl.textContent = "";
+      const sel = document.getElementById("reaConvenio");
+      if (sel.options.length <= 1) sel.innerHTML = `<option value="">Todos</option>` + [...new Set(COEFICIENTES.map((c) => c.convenio))].sort().map((c) => `<option value="${c}">${c}</option>`).join("") + `<option value="OUTRO">Outro</option>`;
+      const resultados = [...document.querySelectorAll(".rea-res:checked")].map((e) => e.value);
+      if (resultados.length === 0) { erroEl.textContent = "Marque ao menos um resultado."; return; }
+      const { data, error } = await supabaseClient.rpc("mailing_reativacao", { p_dias: parseInt(document.getElementById("reaDias").value, 10) || 0, p_resultados: resultados, p_convenio: sel.value || null });
+      if (error) { erroEl.textContent = "Erro: " + error.message; return; }
+      REATIVACAO = data || [];
+      document.getElementById("reaResumo").textContent = ` ${REATIVACAO.length} cliente(s)`;
+      document.getElementById("tbodyReativacao").innerHTML = REATIVACAO.slice(0, 500).map((r) => `
+        <tr><td><input type="checkbox" class="rea-sel" value="${r.lead_id}"></td><td>${r.nome || "(sem nome)"}</td><td>${r.cpf || "-"}</td>
+        <td>${(r.telefones || []).join(" / ") || "-"}</td><td>${r.convenio === "OUTRO" ? "Outro" : (r.convenio || "-")}</td>
+        <td>${RESULTADO_LABEL[r.ultimo_resultado] || r.ultimo_resultado}</td><td>${new Date(r.ultima_data).toLocaleDateString("pt-BR")}</td><td>${r.operador || "-"}</td></tr>`).join("")
+        + (REATIVACAO.length > 500 ? `<tr><td colspan="8" class="hint">Mostrando 500 de ${REATIVACAO.length}. O Excel traz todos.</td></tr>` : "");
+    }
+    document.getElementById("btnBuscarReativacao").addEventListener("click", buscarReativacao);
+    document.getElementById("reaSelTodos").addEventListener("change", (e) => { document.querySelectorAll(".rea-sel").forEach((c) => { c.checked = e.target.checked; }); });
+    document.getElementById("btnExportarReativacao").addEventListener("click", () => {
+      if (REATIVACAO.length === 0) { document.getElementById("erroReativacao").textContent = "Faça a busca primeiro."; return; }
+      const ws = XLSX.utils.json_to_sheet(REATIVACAO.map((r) => ({ "Nome": r.nome, "CPF": r.cpf, "Telefones": (r.telefones || []).join(" / "), "Convênio": r.convenio === "OUTRO" ? "Outro" : (r.convenio || ""), "PMT": r.pmt, "Último resultado": RESULTADO_LABEL[r.ultimo_resultado] || r.ultimo_resultado, "Data": new Date(r.ultima_data).toLocaleDateString("pt-BR"), "Operador": r.operador || "" })));
+      const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Reativação");
+      XLSX.writeFile(wb, `mailing_reativacao_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    });
+    document.getElementById("btnDevolverReativacao").addEventListener("click", async () => {
+      const erroEl = document.getElementById("erroReativacao");
+      const ids = [...document.querySelectorAll(".rea-sel:checked")].map((e) => parseInt(e.value, 10));
+      if (ids.length === 0) { erroEl.style.color = "var(--danger)"; erroEl.textContent = "Marque os clientes que deseja devolver."; return; }
+      if (!confirm(`Devolver ${ids.length} cliente(s) para a fila para nova abordagem?`)) return;
+      let feitos = 0;
+      for (let i = 0; i < ids.length; i += 200) {
+        const { data, error } = await supabaseClient.from("leads")
+          .update({ atribuido_a: null, status: "novo", fila_em: new Date().toISOString(), disponivel_em: null })
+          .in("id", ids.slice(i, i + 200)).in("status", ["tabulado", "em_andamento"]).select("id");
+        if (error) { erroEl.style.color = "var(--danger)"; erroEl.textContent = "Erro: " + error.message; return; }
+        feitos += (data || []).length;
+      }
+      erroEl.style.color = "var(--success)"; erroEl.textContent = `${feitos} cliente(s) devolvido(s) para a fila.`;
+      buscarReativacao(); carregarTudo();
+    });
+
+    // ---------- Modelos de mensagem ----------
+    async function carregarMensagens() {
+      const { data, error } = await supabaseClient.from("modelos_mensagem").select("*").order("ordem").order("id");
+      const tbody = document.getElementById("tbodyMensagens");
+      if (error) { tbody.innerHTML = `<tr><td colspan="4" style="color:var(--muted);">Erro: ${error.message}</td></tr>`; return; }
+      tbody.innerHTML = (data || []).map((m) => `<tr><td>${m.ordem}</td><td>${m.titulo}</td><td>${m.texto}</td>
+        <td><button class="btn secondary" style="padding:4px 10px; font-size:12px; color:var(--danger); border-color:var(--danger);" onclick="excluirMensagem(${m.id})">Excluir</button></td></tr>`).join("") || `<tr><td colspan="4" style="color:var(--muted);">Nenhum modelo.</td></tr>`;
+    }
+    async function excluirMensagem(id) {
+      if (!confirm("Excluir este modelo?")) return;
+      const { error } = await supabaseClient.from("modelos_mensagem").delete().eq("id", id);
+      if (error) { alert("Erro: " + error.message); return; }
+      carregarMensagens();
+    }
+    document.getElementById("btnSalvarMensagem").addEventListener("click", async () => {
+      const erroEl = document.getElementById("erroMensagens"); erroEl.style.color = ""; erroEl.textContent = "";
+      const titulo = document.getElementById("msgTitulo").value.trim(), texto = document.getElementById("msgTexto").value.trim();
+      if (!titulo || !texto) { erroEl.textContent = "Preencha o título e o texto."; return; }
+      const { error } = await supabaseClient.from("modelos_mensagem").insert({ titulo, texto, ordem: 10 });
+      if (error) { erroEl.textContent = "Erro: " + error.message; return; }
+      document.getElementById("msgTitulo").value = ""; document.getElementById("msgTexto").value = "";
+      carregarMensagens();
+    });
+
+    // ---------- Backups automáticos (lista) ----------
+    async function carregarBackups() {
+      const box = document.getElementById("listaBackups");
+      const { data, error } = await supabaseClient.storage.from("backups").list("", { limit: 20, sortBy: { column: "name", order: "desc" } });
+      if (error) { box.innerHTML = `<p class="hint">Não foi possível listar (${error.message}).</p>`; return; }
+      const arqs = (data || []).filter((a) => a.name.startsWith("backup-"));
+      if (arqs.length === 0) { box.innerHTML = `<p class="hint">Nenhum backup automático ainda. Veja as instruções de ativação.</p>`; return; }
+      box.innerHTML = arqs.map((a) => `<div style="margin:6px 0;"><button class="btn secondary" style="padding:4px 10px; font-size:12px;" onclick="baixarBackup('${a.name}')">Baixar</button> ${a.name} <span class="hint">${a.updated_at ? new Date(a.updated_at).toLocaleString("pt-BR") : ""}</span></div>`).join("");
+    }
+    async function baixarBackup(nome) {
+      const { data, error } = await supabaseClient.storage.from("backups").createSignedUrl(nome, 300);
+      if (error) { alert("Erro: " + error.message); return; }
+      window.open(data.signedUrl, "_blank");
+    }
+
+    // ---------- Busca paginada (sem o limite de 1.000 linhas) ----------
+    async function buscarTudo(tabela, select, ordem = "id") {
+      const todos = [];
+      for (let ini = 0; ; ini += 1000) {
+        const { data, error } = await supabaseClient.from(tabela).select(select).order(ordem).range(ini, ini + 999);
+        if (error) { console.error(tabela, error); break; }
+        todos.push(...(data || []));
+        if (!data || data.length < 1000) break;
+      }
+      return { data: todos };
+    }
 
     // ---------- Clientes (lista completa + mailing) ----------
     let CLI_LIMITE = 100;
@@ -596,12 +907,13 @@
       }).sort((a, b) => (b.dias || 0) - (a.dias || 0));
 
       if (linhas.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" style="color:var(--muted);">Nenhuma negociação em andamento no momento.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" style="color:var(--muted);">Nenhuma negociação em andamento no momento.</td></tr>`;
         return;
       }
 
       tbody.innerHTML = linhas.map(({ lead, ultima, dias, consultorNome }) => `
         <tr>
+          <td><input type="checkbox" class="neg-sel" value="${lead.id}" data-dias="${dias === null ? "" : dias}"></td>
           <td>${lead.nome || "(sem nome)"}</td>
           <td>${consultorNome}</td>
           <td>${ultima ? new Date(ultima).toLocaleDateString("pt-BR") : "-"}</td>
@@ -1266,14 +1578,14 @@
       btn.disabled = true; btn.textContent = "Gerando...";
 
       const [{ data: todosLeads }, { data: todasTabulacoes }, { data: todasPropostas }, { data: todosSorteios }, { data: todosDocumentos }, { data: todasRelacionadas }, { data: todosItensSim }, { data: todosContratos }] = await Promise.all([
-        supabaseClient.from("leads").select("*, profiles(nome)"),
-        supabaseClient.from("tabulacoes").select("*, leads(nome, cpf), profiles(nome)"),
-        supabaseClient.from("propostas").select("*, leads(nome, cpf, cep, logradouro, numero, complemento, bairro, cidade, uf, telefone_contato, email, banco, agencia, conta, tipo_conta, chave_pix), profiles(nome)"),
-        supabaseClient.from("sorteios").select("*, leads(nome, cpf), profiles(nome)"),
-        supabaseClient.from("documentos").select("*, leads(nome, cpf), profiles(nome)"),
-        supabaseClient.from("pessoas_relacionadas").select("*, leads(nome, cpf), profiles(nome)"),
-        supabaseClient.from("simulacao_itens").select("*, simulacoes(convenio, tabela, prazo, leads(nome, cpf), profiles(nome))"),
-        supabaseClient.from("contratos_credbase").select("*, profiles(nome)"),
+        buscarTudo("leads", "*, profiles(nome)"),
+        buscarTudo("tabulacoes", "*, leads(nome, cpf), profiles(nome)"),
+        buscarTudo("propostas", "*, leads(nome, cpf, cep, logradouro, numero, complemento, bairro, cidade, uf, telefone_contato, email, banco, agencia, conta, tipo_conta, chave_pix), profiles(nome)"),
+        buscarTudo("sorteios", "*, leads(nome, cpf), profiles(nome)"),
+        buscarTudo("documentos", "*, leads(nome, cpf), profiles(nome)"),
+        buscarTudo("pessoas_relacionadas", "*, leads(nome, cpf), profiles(nome)"),
+        buscarTudo("simulacao_itens", "*, simulacoes(convenio, tabela, prazo, leads(nome, cpf), profiles(nome))"),
+        buscarTudo("contratos_credbase", "*, profiles(nome)"),
       ]);
 
       const wb = XLSX.utils.book_new();
