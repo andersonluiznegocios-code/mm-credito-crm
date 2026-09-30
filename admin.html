@@ -347,6 +347,8 @@
       window.open(signed.signedUrl, "_blank");
     }
 
+    function escAttr(v) { return String(v ?? "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;"); }
+
     function renderCoeficientes() {
       const tbody = document.getElementById("tbodyCoeficientes");
       if (COEFICIENTES.length === 0) {
@@ -355,27 +357,46 @@
       }
       tbody.innerHTML = COEFICIENTES.map((c, i) => `
         <tr>
-          <td>${c.convenio}</td>
-          <td>${c.tabela}</td>
-          <td><input type="number" step="0.000000001" id="coef_${i}" value="${c.valor}" style="width:160px;"></td>
-          <td><button class="btn secondary" onclick="salvarCoeficiente('${c.convenio}', '${c.tabela.replace(/'/g, "\\'")}', ${i})">Salvar</button></td>
+          <td><input type="text" id="conv_${i}" value="${escAttr(c.convenio)}" style="width:150px;"></td>
+          <td><input type="text" id="tab_${i}" value="${escAttr(c.tabela)}" style="width:200px;"></td>
+          <td><input type="number" step="0.000000001" id="coef_${i}" value="${c.valor}" style="width:140px;"></td>
+          <td style="white-space:nowrap;">
+            <button class="btn secondary" onclick="salvarCoeficiente(${i})">Salvar</button>
+            <button class="btn secondary" style="color:#ff6b6b;" onclick="excluirCoeficiente(${i})">Excluir</button>
+          </td>
         </tr>
       `).join("");
     }
 
-    async function salvarCoeficiente(convenio, tabela, i) {
+    async function salvarCoeficiente(i) {
       const erroEl = document.getElementById("erroCoeficientes");
       erroEl.textContent = "";
+      erroEl.style.color = "";
+      const antigo = COEFICIENTES[i];
+      const convenio = document.getElementById(`conv_${i}`).value.trim();
+      const tabela = document.getElementById(`tab_${i}`).value.trim();
       const novoValor = parseFloat(document.getElementById(`coef_${i}`).value);
+      if (!convenio || !tabela) { erroEl.textContent = "Convênio e tabela não podem ficar vazios."; return; }
       if (!novoValor || novoValor <= 0) { erroEl.textContent = "Valor inválido."; return; }
 
       const { error } = await supabaseClient
         .from("coeficientes")
-        .update({ valor: novoValor, atualizado_em: new Date().toISOString() })
-        .eq("convenio", convenio).eq("tabela", tabela);
+        .update({ convenio, tabela, valor: novoValor, atualizado_em: new Date().toISOString() })
+        .eq("convenio", antigo.convenio).eq("tabela", antigo.tabela);
       if (error) { erroEl.textContent = "Erro ao salvar: " + error.message; return; }
       erroEl.style.color = "var(--success)";
-      erroEl.textContent = `Coeficiente de ${convenio} / ${tabela} atualizado.`;
+      erroEl.textContent = `${convenio} / ${tabela} atualizado.`;
+      carregarTudo();
+    }
+
+    async function excluirCoeficiente(i) {
+      const erroEl = document.getElementById("erroCoeficientes");
+      const c = COEFICIENTES[i];
+      if (!confirm(`Excluir ${c.convenio} / ${c.tabela}?`)) return;
+      const { error } = await supabaseClient.from("coeficientes").delete().eq("convenio", c.convenio).eq("tabela", c.tabela);
+      if (error) { erroEl.style.color = ""; erroEl.textContent = "Erro ao excluir: " + error.message; return; }
+      erroEl.style.color = "var(--success)";
+      erroEl.textContent = `${c.convenio} / ${c.tabela} excluído.`;
       carregarTudo();
     }
 
