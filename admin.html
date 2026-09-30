@@ -175,7 +175,7 @@
             <p class="hint" style="margin-top:0;">Usado no cálculo de simulação (valor da parcela ÷ coeficiente = valor de contrato). Atualize aqui sempre que a MK publicar tabela nova — não precisa mexer em código.</p>
             <div class="table-wrap">
               <table>
-                <thead><tr><th><input type="checkbox" id="coefSelTodos" title="Selecionar todos"></th><th>Convênio</th><th>Tabela</th><th>Coeficiente</th><th></th></tr></thead>
+                <thead><tr><th><input type="checkbox" id="coefSelTodos" title="Selecionar todos"></th><th>Convênio</th><th>Tabela</th><th>Coeficiente</th><th>Prazo (meses)</th><th></th></tr></thead>
                 <tbody id="tbodyCoeficientes"></tbody>
               </table>
             </div>
@@ -188,6 +188,7 @@
               <div class="field"><label>Convênio</label><input type="text" id="novoConvenio" placeholder="Ex: SEPLAG/MG"></div>
               <div class="field"><label>Tabela</label><input type="text" id="novaTabela" placeholder="Ex: TOP Comercial"></div>
               <div class="field"><label>Coeficiente</label><input type="number" step="0.000000001" id="novoCoeficiente" placeholder="0.0000000"></div>
+              <div class="field"><label>Prazo (meses)</label><input type="number" min="1" step="1" id="novoPrazo" value="96"></div>
             </div>
             <button class="btn" id="btnAdicionarCoeficiente">Adicionar</button>
           </div>
@@ -353,7 +354,7 @@
     function renderCoeficientes() {
       const tbody = document.getElementById("tbodyCoeficientes");
       if (COEFICIENTES.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" style="color:var(--muted);">Nenhum coeficiente cadastrado.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" style="color:var(--muted);">Nenhum coeficiente cadastrado.</td></tr>`;
         return;
       }
       tbody.innerHTML = COEFICIENTES.map((c, i) => `
@@ -362,6 +363,7 @@
           <td><input type="text" id="conv_${i}" value="${escAttr(c.convenio)}" style="width:150px;"></td>
           <td><input type="text" id="tab_${i}" value="${escAttr(c.tabela)}" style="width:200px;"></td>
           <td><input type="number" step="0.000000001" id="coef_${i}" value="${c.valor}" style="width:140px;"></td>
+          <td><input type="number" min="1" step="1" id="prazo_${i}" value="${c.prazo ?? 96}" style="width:80px;"></td>
           <td style="white-space:nowrap;">
             <button class="btn secondary" onclick="salvarCoeficiente(${i})">Salvar</button>
             <button class="btn secondary" style="color:#ff6b6b;" onclick="excluirCoeficiente(${i})">Excluir</button>
@@ -378,12 +380,14 @@
       const convenio = document.getElementById(`conv_${i}`).value.trim();
       const tabela = document.getElementById(`tab_${i}`).value.trim();
       const novoValor = parseFloat(document.getElementById(`coef_${i}`).value);
+      const prazo = parseInt(document.getElementById(`prazo_${i}`).value, 10);
+      if (!prazo || prazo <= 0) { erroEl.textContent = "Informe o prazo em meses."; return; }
       if (!convenio || !tabela) { erroEl.textContent = "Convênio e tabela não podem ficar vazios."; return; }
       if (!novoValor || novoValor <= 0) { erroEl.textContent = "Valor inválido."; return; }
 
       const { data, error } = await supabaseClient
         .from("coeficientes")
-        .update({ convenio, tabela, valor: novoValor, atualizado_em: new Date().toISOString() })
+        .update({ convenio, tabela, valor: novoValor, prazo, atualizado_em: new Date().toISOString() })
         .eq("convenio", antigo.convenio).eq("tabela", antigo.tabela).select();
       if (error) { erroEl.textContent = "Erro ao salvar: " + error.message; return; }
       if (!data || data.length === 0) { erroEl.textContent = "O banco não permitiu salvar (permissão de UPDATE em coeficientes)."; return; }
@@ -436,10 +440,12 @@
       const convenio = document.getElementById("novoConvenio").value.trim();
       const tabela = document.getElementById("novaTabela").value.trim();
       const valor = parseFloat(document.getElementById("novoCoeficiente").value);
+      const prazo = parseInt(document.getElementById("novoPrazo").value, 10);
+      if (!prazo || prazo <= 0) { erroEl.textContent = "Informe o prazo em meses."; return; }
       if (!convenio || !tabela) { erroEl.textContent = "Preencha convênio e tabela."; return; }
       if (!valor || valor <= 0) { erroEl.textContent = "Informe um coeficiente válido."; return; }
 
-      const { error } = await supabaseClient.from("coeficientes").insert({ convenio, tabela, valor });
+      const { error } = await supabaseClient.from("coeficientes").insert({ convenio, tabela, valor, prazo });
       if (error) { erroEl.textContent = "Erro ao adicionar: " + error.message; return; }
 
       document.getElementById("novoConvenio").value = "";
