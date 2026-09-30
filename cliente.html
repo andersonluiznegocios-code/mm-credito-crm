@@ -324,18 +324,39 @@
     }
     preencherSelect(document.getElementById("simPrazo"), PRAZOS_MESES);
 
-    // Popula convênio/tabela em cada linha da simulação, de forma independente
-    const CONVENIOS_DISPONIVEIS = Object.keys(TABELAS_POR_CONVENIO);
-    document.querySelectorAll(".sim-convenio").forEach((selConvenio) => {
-      preencherSelect(selConvenio, CONVENIOS_DISPONIVEIS);
-      const linha = selConvenio.closest("tr");
-      const selTabela = linha.querySelector(".sim-tabela");
-      preencherSelect(selTabela, TABELAS_POR_CONVENIO[selConvenio.value]);
-      selConvenio.addEventListener("change", () => {
-        preencherSelect(selTabela, TABELAS_POR_CONVENIO[selConvenio.value]);
-        recalcular();
+    // Convênios/tabelas vêm do banco (página Coeficientes do admin) — atualizam sozinhos.
+    function tabelasDoConvenio(conv) { return Object.keys(COEFICIENTES[conv] || {}); }
+
+    function popularSelectsSimulacao() {
+      let mudou = false;
+      const convenios = Object.keys(COEFICIENTES);
+      document.querySelectorAll(".sim-convenio").forEach((selConvenio) => {
+        const linha = selConvenio.closest("tr");
+        const selTabela = linha.querySelector(".sim-tabela");
+        const convAnt = selConvenio.value, tabAnt = selTabela.value;
+        preencherSelect(selConvenio, convenios);
+        if (convenios.includes(convAnt)) selConvenio.value = convAnt;
+        const tabelas = tabelasDoConvenio(selConvenio.value);
+        preencherSelect(selTabela, tabelas);
+        if (tabelas.includes(tabAnt)) selTabela.value = tabAnt;
+        if (selConvenio.value !== convAnt || selTabela.value !== tabAnt) mudou = true;
+        if (!selConvenio.dataset.ligado) {
+          selConvenio.dataset.ligado = "1";
+          selConvenio.addEventListener("change", () => {
+            preencherSelect(selTabela, tabelasDoConvenio(selConvenio.value));
+            recalcular();
+          });
+        }
       });
-    });
+      return mudou;
+    }
+
+    async function atualizarCoeficientes() {
+      await carregarCoeficientes();
+      if (popularSelectsSimulacao() && typeof recalcular === "function") recalcular();
+    }
+    setInterval(atualizarCoeficientes, 30000);
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) atualizarCoeficientes(); });
     document.querySelectorAll(".sim-divida, .sim-parcela, .sim-incluir, .sim-tabela").forEach((el) => {
       el.addEventListener("input", recalcular);
       el.addEventListener("change", recalcular);
@@ -831,6 +852,7 @@
       PERFIL = auth.profile;
       document.getElementById("whoami").textContent = PERFIL.nome;
       await carregarCoeficientes();
+      popularSelectsSimulacao();
       carregarCliente();
     })();
   </script>
