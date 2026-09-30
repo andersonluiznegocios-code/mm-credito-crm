@@ -55,19 +55,30 @@ function parseDataNascimento(v) {
 }
 
 // Colunas obrigatórias: CPF, NOME, PMT, TELEFONE. Opcionais: CONVENIO, DATA_NASCIMENTO.
+// Detecta sozinho o separador (vírgula, ponto e vírgula, tab ou |) e aceita variações comuns de nome de coluna.
 function parseLeadsCSV(texto) {
-  const linhas = texto.split(/\r?\n/).filter((l) => l.trim().length > 0);
-  const header = linhas[0].split(",").map((h) => normalizarTexto(h));
-  const idxCpf = header.indexOf("CPF");
-  const idxNome = header.indexOf("NOME");
-  const idxPmt = header.indexOf("PMT");
-  const idxTel = header.indexOf("TELEFONE");
-  const idxConv = header.findIndex((h) => h === "CONVENIO");
-  const idxNasc = header.findIndex((h) => h === "DATA NASCIMENTO" || h === "NASCIMENTO" || h === "DATA DE NASCIMENTO");
+  const linhas = texto.replace(/^\uFEFF/, "").split(/\r?\n/).filter((l) => l.trim().length > 0);
+  if (linhas.length === 0) throw new Error("O arquivo está vazio.");
+  const delim = [",", ";", "\t", "|"]
+    .map((d) => ({ d, n: parseCsvLine(linhas[0], d).length }))
+    .sort((a, b) => b.n - a.n)[0].d;
+  const header = parseCsvLine(linhas[0], delim).map((h) => normalizarTexto(h));
+  const achar = (...nomes) => header.findIndex((h) => nomes.includes(h));
+  const idxCpf = achar("CPF", "CPF CNPJ", "CPFCNPJ", "DOCUMENTO");
+  const idxNome = achar("NOME", "NOME CLIENTE", "NOME DO CLIENTE", "CLIENTE");
+  const idxPmt = achar("PMT", "PARCELA", "VALOR PARCELA");
+  const idxTel = achar("TELEFONE", "TELEFONES", "FONE", "CELULAR", "TEL");
+  const idxConv = achar("CONVENIO");
+  const idxNasc = achar("DATA NASCIMENTO", "NASCIMENTO", "DATA DE NASCIMENTO", "DT NASCIMENTO");
+
+  const faltando = [["CPF", idxCpf], ["NOME", idxNome], ["PMT", idxPmt], ["TELEFONE", idxTel]].filter(([, i]) => i < 0).map(([n]) => n);
+  if (faltando.length > 0) {
+    throw new Error(`Não encontrei a(s) coluna(s) ${faltando.join(", ")}. Colunas lidas no arquivo: ${header.join(" | ") || "(nenhuma)"}.`);
+  }
 
   const leads = [];
   for (let i = 1; i < linhas.length; i++) {
-    const campos = parseCsvLine(linhas[i]);
+    const campos = parseCsvLine(linhas[i], delim);
     const cpf = (campos[idxCpf] || "").trim();
     let nome = (campos[idxNome] || "").trim();
     if (nome === "NULL") nome = "";
@@ -77,10 +88,10 @@ function parseLeadsCSV(texto) {
       : null;
     const telRaw = (campos[idxTel] || "").trim();
     const telefones = telRaw && telRaw !== "NULL"
-      ? telRaw.split(";").map((t) => t.trim()).filter(Boolean)
+      ? telRaw.split(/[;\/]/).map((t) => t.trim()).filter(Boolean)
       : [];
     if (!cpf) continue;
-    const lead = { cpf, nome, pmt, telefones, status: "novo" };
+    const lead = { cpf, nome, pmt: Number.isNaN(pmt) ? null : pmt, telefones, status: "novo" };
     if (idxConv >= 0) {
       const conv = (campos[idxConv] || "").trim();
       lead.convenio = conv && conv !== "NULL" ? conv : null;
@@ -92,7 +103,7 @@ function parseLeadsCSV(texto) {
 }
 
 // parser simples de linha CSV respeitando aspas
-function parseCsvLine(linha) {
+function parseCsvLine(linha, delim = ",") {
   const out = [];
   let atual = "";
   let dentroAspas = false;
@@ -100,7 +111,7 @@ function parseCsvLine(linha) {
     const c = linha[i];
     if (c === '"') {
       dentroAspas = !dentroAspas;
-    } else if (c === "," && !dentroAspas) {
+    } else if (c === delim && !dentroAspas) {
       out.push(atual);
       atual = "";
     } else {
