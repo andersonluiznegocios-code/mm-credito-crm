@@ -301,6 +301,18 @@
     </div>
 
     <!-- ===== PESSOAS RELACIONADAS ===== -->
+    <!-- ===== HISTÓRICO DO CLIENTE ===== -->
+    <div class="card" id="secaoHistorico">
+      <h2 style="margin-top:0;">Histórico do cliente</h2>
+      <p class="hint" style="margin-top:0;">Quem atendeu, o que foi tabulado e quando.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Data</th><th>Operador</th><th>Evento</th><th>Detalhe</th></tr></thead>
+          <tbody id="tbodyHistorico"></tbody>
+        </table>
+      </div>
+    </div>
+
     <div class="card" id="secaoRelacionadas">
       <h2 style="margin-top:0;">Pessoas relacionadas</h2>
       <p class="hint" style="margin-top:0;">Referências do cliente — parente, contato de recado, etc.</p>
@@ -352,6 +364,17 @@
         if (!COEFICIENTES[c.convenio]) COEFICIENTES[c.convenio] = {};
         COEFICIENTES[c.convenio][c.tabela] = c.valor;
       }
+    }
+
+
+    // Telefone + botão de WhatsApp (celular = 11 dígitos com 9 após o DDD)
+    function linkTelefone(tel) {
+      const d = String(tel || "").replace(/\D/g, "");
+      const ehCelular = d.length === 11 && d[2] === "9";
+      if (!ehCelular) return d || "-";
+      const primeiroNome = ((LEAD && LEAD.nome) || "").split(" ")[0];
+      const msg = `Olá${primeiroNome ? ", " + primeiroNome : ""}! Tudo bem? Aqui é ${PERFIL ? PERFIL.nome.split(" ")[0] : ""} da MM Crédito.`;
+      return `${d} <a href="https://wa.me/55${d}?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener" style="background:#25D366; color:#fff; text-decoration:none; padding:2px 8px; border-radius:10px; font-size:11px; margin-left:6px;">WhatsApp</a>`;
     }
 
     const params = new URLSearchParams(window.location.search);
@@ -533,7 +556,7 @@
       document.getElementById("leadInfo").innerHTML = `
         <div><span class="lbl">CPF</span><br>${LEAD.cpf || "-"}</div>
         <div><span class="lbl">PMT</span><br>${formatBRL(LEAD.pmt)}</div>
-        <div><span class="lbl">Telefones (base)</span><br>${(LEAD.telefones || []).join(" · ") || "-"}</div>
+        <div><span class="lbl">Telefones (base)</span><br>${(LEAD.telefones || []).map(linkTelefone).join("<br>") || "-"}</div>
         ${LEAD.data_nascimento ? `<div><span class="lbl">Data de nascimento</span><br>${new Date(LEAD.data_nascimento + "T00:00:00").toLocaleDateString("pt-BR")}</div>` : ""}
         ${LEAD.convenio ? `<div><span class="lbl">Convênio do cliente</span><br>${LEAD.convenio === "OUTRO" ? "Outro (sem tabela cadastrada)" : LEAD.convenio}</div>` : ""}
       `;
@@ -560,6 +583,7 @@
       await carregarDocumentos();
       await carregarObservacoes();
       await carregarRelacionadas();
+      carregarHistorico();
       recalcular();
       await iniciarContato();
     }
@@ -766,6 +790,33 @@
       carregarObservacoes();
       setTimeout(() => { window.location.href = "consultor.html"; }, 1800);
     });
+
+
+    // ---------- Histórico completo do cliente ----------
+    const EVENTO_LABEL = { sorteio: "Sorteado", tabulacao: "Tabulação", simulacao: "Simulação", proposta: "Proposta (venda)", liberado: "Liberado para a fila", cadastro_manual: "Cadastrado fora da base" };
+    function detalheEvento(e) {
+      const d = e.detalhe || {};
+      if (e.tipo === "tabulacao") {
+        return `${RESULTADO_LABEL[d.resultado] || d.resultado}${d.observacao ? " — " + d.observacao : ""}${d.reagendado_para ? " (retorno " + new Date(d.reagendado_para).toLocaleString("pt-BR") + ")" : ""}`;
+      }
+      if (e.tipo === "simulacao" || e.tipo === "proposta") return `${formatBRL(d.valor_contrato)} em ${d.prazo || "-"} meses`;
+      if (e.tipo === "cadastro_manual") return d.convenio && d.convenio !== "OUTRO" ? `Convênio: ${d.convenio}` : "";
+      return "";
+    }
+    async function carregarHistorico() {
+      const tbody = document.getElementById("tbodyHistorico");
+      const { data, error } = await supabaseClient.from("lead_eventos").select("*, profiles(nome)")
+        .eq("lead_id", LEAD.id).order("criado_em", { ascending: false });
+      if (error) { tbody.innerHTML = `<tr><td colspan="4" style="color:var(--muted);">Não foi possível carregar o histórico.</td></tr>`; return; }
+      if (!data || data.length === 0) { tbody.innerHTML = `<tr><td colspan="4" style="color:var(--muted);">Sem registros ainda.</td></tr>`; return; }
+      tbody.innerHTML = data.map((e) => `
+        <tr>
+          <td>${new Date(e.criado_em).toLocaleString("pt-BR")}</td>
+          <td>${e.profiles ? e.profiles.nome : "-"}</td>
+          <td>${EVENTO_LABEL[e.tipo] || e.tipo}</td>
+          <td>${detalheEvento(e)}</td>
+        </tr>`).join("");
+    }
 
     // ---------- Pessoas relacionadas ----------
     async function carregarRelacionadas() {
