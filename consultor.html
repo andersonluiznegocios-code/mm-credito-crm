@@ -20,6 +20,7 @@
     <div class="sidebar">
       <div class="sidebar-item ativo" data-pagina="sorteio" onclick="mudarPagina('sorteio')">🎲 Sorteio <span id="badgeRetornos" class="hidden" style="background:var(--danger); color:#fff; border-radius:10px; padding:1px 7px; font-size:11px; margin-left:4px;"></span></div>
       <div class="sidebar-item" data-pagina="novocliente" onclick="mudarPagina('novocliente')">➕ Novo cliente (fora da base)</div>
+      <div class="sidebar-item" data-pagina="roteiros" onclick="mudarPagina('roteiros')">📚 Roteiros</div>
       <div class="sidebar-item" data-pagina="contratos" onclick="mudarPagina('contratos')">📄 Contratos</div>
     </div>
 
@@ -57,6 +58,15 @@
                 <tbody id="tbodyBoletosMeus"></tbody>
               </table>
             </div>
+          </div>
+
+          <div class="card hidden" id="cardAvaliacoes">
+            <h2 style="margin-top:0;">⭐ Minhas avaliações de qualidade</h2>
+            <div id="resumoAvaliacoes" class="hint" style="margin-bottom:8px;"></div>
+            <div class="table-wrap"><table>
+              <thead><tr><th>Data</th><th>Nota</th><th>Observação</th></tr></thead>
+              <tbody id="tbodyAvaliacoes"></tbody>
+            </table></div>
           </div>
 
           <div class="card hidden" id="cardReagendamentos">
@@ -129,6 +139,34 @@
           </div>
         </div>
 
+        <!-- ===== PÁGINA: ROTEIROS ===== -->
+        <div class="page-panel" id="page-roteiros">
+          <h1>Roteiros operacionais</h1>
+          <p class="subtitle">Consulte o roteiro de cada convênio para tirar dúvidas durante o atendimento.</p>
+          <div class="card">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px;">
+              <div class="field"><label>Convênio</label><select id="rotFiltroConvenio"><option value="">Todos</option></select></div>
+              <div class="field"><label>Buscar pelo título</label><input type="text" id="rotBusca" placeholder="Digite para filtrar"></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Convênio</th><th>Roteiro</th><th>Atualizado em</th><th></th></tr></thead>
+                <tbody id="tbodyRoteiros"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card hidden" id="cardLeitorRoteiro">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+              <h2 style="margin:0;" id="tituloLeitorRoteiro">Roteiro</h2>
+              <div><a class="btn secondary" id="linkAbrirRoteiro" target="_blank" rel="noopener" style="text-decoration:none;">Abrir em nova aba</a>
+              <button class="btn secondary" onclick="document.getElementById('cardLeitorRoteiro').classList.add('hidden')">Fechar</button></div>
+            </div>
+            <iframe id="frameRoteiro" style="width:100%; height:75vh; border:0; background:#fff; border-radius:8px; margin-top:12px;"></iframe>
+          </div>
+        </div>
+
         <!-- ===== PÁGINA: CONTRATOS ===== -->
         <div class="page-panel" id="page-contratos">
           <h1>Meus contratos</h1>
@@ -166,6 +204,7 @@
       document.querySelectorAll(".sidebar-item").forEach((el) => el.classList.toggle("ativo", el.dataset.pagina === nome));
       document.querySelectorAll(".page-panel").forEach((el) => el.classList.toggle("ativa", el.id === "page-" + nome));
       if (nome === "contratos" && CONTRATOS_CACHE.length === 0) carregarContratos();
+      if (nome === "roteiros") carregarRoteiros();
     }
 
 
@@ -213,6 +252,14 @@
       if (!pmt || pmt <= 0) { erroEl.textContent = "Informe a PMT (maior que zero)."; return; }
       if (telefones.length === 0 || telefones.some((t) => t.length < 10 || t.length > 11)) { erroEl.textContent = "Informe telefone(s) com DDD (10 ou 11 dígitos)."; return; }
       if (!convSel) { erroEl.textContent = "Selecione o convênio do cliente."; return; }
+
+      const { data: chk } = await supabaseClient.rpc("checar_telefones", { p_telefones: telefones });
+      const errados = (chk || []).filter((r) => r.errado).map((r) => r.telefone);
+      const repetidos = (chk || []).filter((r) => r.outros > 0).map((r) => `${r.telefone} (em ${r.outros} cliente(s))`);
+      if (errados.length || repetidos.length) {
+        const aviso = (errados.length ? `Já marcado como ERRADO em outro cliente: ${errados.join(", ")}.\n` : "") + (repetidos.length ? `Número repetido: ${repetidos.join(", ")}.\n` : "");
+        if (!confirm(aviso + "\nDeseja cadastrar mesmo assim?")) return;
+      }
 
       const btn = document.getElementById("btnCriarCliente");
       btn.disabled = true; btn.textContent = "Cadastrando...";
@@ -404,6 +451,54 @@
       }).join("");
     }
 
+
+    // ---------- Roteiros (PDF por convênio) ----------
+    let ROTEIROS = [];
+    async function carregarRoteiros() {
+      const { data, error } = await supabaseClient.from("roteiros").select("*").order("convenio").order("titulo");
+      if (error) { document.getElementById("tbodyRoteiros").innerHTML = `<tr><td colspan="4" style="color:var(--muted);">Erro: ${error.message}</td></tr>`; return; }
+      ROTEIROS = data || [];
+      const sel = document.getElementById("rotFiltroConvenio");
+      const atual = sel.value;
+      sel.innerHTML = `<option value="">Todos</option>` + [...new Set(ROTEIROS.map((r) => r.convenio))].sort().map((c) => `<option value="${c}">${c}</option>`).join("");
+      sel.value = atual;
+      renderRoteiros();
+    }
+    function renderRoteiros() {
+      const conv = document.getElementById("rotFiltroConvenio").value;
+      const busca = document.getElementById("rotBusca").value.trim().toLowerCase();
+      const lista = ROTEIROS.filter((r) => (!conv || r.convenio === conv) && (!busca || r.titulo.toLowerCase().includes(busca)));
+      document.getElementById("tbodyRoteiros").innerHTML = lista.map((r) => `<tr>
+        <td>${r.convenio}</td><td>${r.titulo}</td><td>${new Date(r.atualizado_em).toLocaleDateString("pt-BR")}</td>
+        <td><button class="btn" style="padding:4px 12px; font-size:13px;" onclick="abrirRoteiro(${r.id})">Ler roteiro</button></td></tr>`).join("")
+        || `<tr><td colspan="4" style="color:var(--muted);">Nenhum roteiro disponível ainda.</td></tr>`;
+    }
+    async function abrirRoteiro(id) {
+      const r = ROTEIROS.find((x) => x.id === id);
+      if (!r) return;
+      const { data, error } = await supabaseClient.storage.from("roteiros").createSignedUrl(r.arquivo_path, 3600);
+      if (error) { alert("Não foi possível abrir o roteiro: " + error.message); return; }
+      document.getElementById("tituloLeitorRoteiro").textContent = `${r.convenio} — ${r.titulo}`;
+      document.getElementById("frameRoteiro").src = data.signedUrl;
+      document.getElementById("linkAbrirRoteiro").href = data.signedUrl;
+      const card = document.getElementById("cardLeitorRoteiro");
+      card.classList.remove("hidden");
+      card.scrollIntoView({ behavior: "smooth" });
+    }
+    document.getElementById("rotFiltroConvenio").addEventListener("change", renderRoteiros);
+    document.getElementById("rotBusca").addEventListener("input", renderRoteiros);
+
+    // ---------- Minhas avaliações ----------
+    async function carregarAvaliacoes() {
+      const { data } = await supabaseClient.from("avaliacoes_qualidade").select("*").eq("consultor_id", PERFIL.id).order("criado_em", { ascending: false }).limit(10);
+      const card = document.getElementById("cardAvaliacoes");
+      if (!data || data.length === 0) { card.classList.add("hidden"); return; }
+      card.classList.remove("hidden");
+      const media = (data.reduce((t, a) => t + a.nota, 0) / data.length).toFixed(1);
+      document.getElementById("resumoAvaliacoes").textContent = `Média das últimas ${data.length} avaliações: ${media} / 10`;
+      document.getElementById("tbodyAvaliacoes").innerHTML = data.map((a) => `<tr><td>${new Date(a.criado_em).toLocaleDateString("pt-BR")}</td><td><strong>${a.nota}</strong></td><td>${a.observacao || "-"}</td></tr>`).join("");
+    }
+
     async function verificarPendente() {
       const { data } = await supabaseClient.rpc("cliente_pendente");
       const card = document.getElementById("cardPendente");
@@ -494,6 +589,9 @@
       carregarLeads();
       verificarPendente();
       carregarMetaDia();
+      carregarAvaliacoes();
+      iniciarLembretes(PERFIL);
+      entrarPresenca(PERFIL);
       carregarBoletosMeus();
       carregarConveniosNovoCliente();
       atualizarDisponiveis();
