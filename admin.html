@@ -19,6 +19,7 @@
   <div class="app-shell">
     <div class="sidebar">
       <div class="sidebar-item ativo" data-pagina="visao-geral" onclick="mudarPagina('visao-geral')">📊 Visão geral</div>
+      <div class="sidebar-item" data-pagina="clientes" onclick="mudarPagina('clientes')">👥 Clientes</div>
       <div class="sidebar-item" data-pagina="contratos" onclick="mudarPagina('contratos')">📄 Contratos</div>
       <div class="sidebar-item" data-pagina="sorteios" onclick="mudarPagina('sorteios')">🎲 Sorteios</div>
       <div class="sidebar-item" data-pagina="tabulacoes" onclick="mudarPagina('tabulacoes')">📝 Tabulações</div>
@@ -111,6 +112,36 @@
                 <tfoot id="tfootContratosAdmin"></tfoot>
               </table>
             </div>
+          </div>
+        </div>
+
+        <!-- ===== PÁGINA: CLIENTES ===== -->
+        <div class="page-panel" id="page-clientes">
+          <h1>Clientes</h1>
+          <p class="subtitle">Todos os clientes do CRM: da base importada e cadastrados fora da base. Use os filtros e baixe em Excel para mailing.</p>
+          <div class="card">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px;">
+              <div class="field"><label>Buscar (nome ou CPF)</label><input type="text" id="cliBusca" placeholder="Digite e tecle Enter"></div>
+              <div class="field"><label>Origem</label><select id="cliOrigem"><option value="">Todas</option><option value="manual">Fora da base (cadastro manual)</option><option value="base">Da base importada</option></select></div>
+              <div class="field"><label>Convênio</label><select id="cliConvenio"><option value="">Todos</option></select></div>
+              <div class="field"><label>Status</label><select id="cliStatus"><option value="">Todos</option></select></div>
+              <div class="field"><label>Operador</label><select id="cliOperador"><option value="">Todos</option></select></div>
+            </div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:8px;">
+              <button class="btn" id="btnFiltrarClientes">Filtrar</button>
+              <button class="btn secondary" id="btnExportarClientes">Baixar Excel (filtro atual)</button>
+              <span class="hint" id="cliResumo"></span>
+            </div>
+            <div class="error-msg" id="erroClientes"></div>
+          </div>
+          <div class="card">
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Nome</th><th>CPF</th><th>Nascimento</th><th>Telefones</th><th>PMT</th><th>Convênio</th><th>Origem</th><th>Operador</th><th>Status</th></tr></thead>
+                <tbody id="tbodyClientes"></tbody>
+              </table>
+            </div>
+            <button class="btn secondary hidden" id="btnMaisClientes" style="margin-top:12px;">Carregar mais</button>
           </div>
         </div>
 
@@ -238,7 +269,100 @@
       document.querySelectorAll(".sidebar-item").forEach((el) => el.classList.toggle("ativo", el.dataset.pagina === nome));
       document.querySelectorAll(".page-panel").forEach((el) => el.classList.toggle("ativa", el.id === "page-" + nome));
       if (nome === "contratos" && CONTRATOS.length === 0) carregarContratos();
+      if (nome === "clientes") carregarClientes();
     }
+
+
+    // ---------- Clientes (lista completa + mailing) ----------
+    let CLI_LIMITE = 100;
+    let CLI_INICIADO = false;
+
+    function montarConsultaClientes(q) {
+      const busca = document.getElementById("cliBusca").value.trim();
+      const origem = document.getElementById("cliOrigem").value;
+      const convenio = document.getElementById("cliConvenio").value;
+      const status = document.getElementById("cliStatus").value;
+      const operador = document.getElementById("cliOperador").value;
+      if (busca) {
+        const digitos = busca.replace(/\D/g, "");
+        const termo = busca.replace(/[,()%]/g, " ");
+        q = digitos.length >= 3 ? q.or(`nome.ilike.%${termo}%,cpf.ilike.%${digitos}%`) : q.ilike("nome", `%${termo}%`);
+      }
+      if (origem === "manual") q = q.eq("origem", "manual");
+      if (origem === "base") q = q.or("origem.is.null,origem.eq.base");
+      if (convenio) q = q.eq("convenio", convenio);
+      if (status) q = q.eq("status", status);
+      if (operador) q = q.eq("atribuido_a", operador);
+      return q;
+    }
+
+    function iniciarFiltrosClientes() {
+      if (CLI_INICIADO) return;
+      CLI_INICIADO = true;
+      const convenios = [...new Set(COEFICIENTES.map((c) => c.convenio))].sort();
+      document.getElementById("cliConvenio").innerHTML = `<option value="">Todos</option>` + convenios.map((c) => `<option value="${c}">${c}</option>`).join("") + `<option value="OUTRO">Outro (sem tabela)</option>`;
+      document.getElementById("cliStatus").innerHTML = `<option value="">Todos</option>` + Object.entries(STATUS_LABEL).map(([k, v]) => `<option value="${k}">${v}</option>`).join("");
+      document.getElementById("cliOperador").innerHTML = `<option value="">Todos</option>` + CONSULTORES.map((c) => `<option value="${c.id}">${c.nome}</option>`).join("");
+    }
+
+    async function carregarClientes() {
+      iniciarFiltrosClientes();
+      const erroEl = document.getElementById("erroClientes");
+      erroEl.textContent = "";
+      const tbody = document.getElementById("tbodyClientes");
+      tbody.innerHTML = `<tr><td colspan="9" style="color:var(--muted);">Carregando...</td></tr>`;
+      const q = montarConsultaClientes(supabaseClient.from("leads").select("*, profiles(nome)", { count: "exact" }))
+        .order("criado_em", { ascending: false }).limit(CLI_LIMITE);
+      const { data, error, count } = await q;
+      if (error) { tbody.innerHTML = ""; erroEl.textContent = "Erro ao carregar clientes: " + error.message; return; }
+      document.getElementById("cliResumo").textContent = `${count ?? data.length} cliente(s) no filtro · mostrando ${data.length}`;
+      document.getElementById("btnMaisClientes").classList.toggle("hidden", !count || data.length >= count);
+      if (data.length === 0) { tbody.innerHTML = `<tr><td colspan="9" style="color:var(--muted);">Nenhum cliente encontrado.</td></tr>`; return; }
+      tbody.innerHTML = data.map((l) => `
+        <tr>
+          <td>${l.nome || "(sem nome)"}</td>
+          <td>${l.cpf || "-"}</td>
+          <td>${l.data_nascimento ? new Date(l.data_nascimento + "T00:00:00").toLocaleDateString("pt-BR") : "-"}</td>
+          <td>${(l.telefones || []).join(" / ") || "-"}</td>
+          <td>${formatBRL(l.pmt)}</td>
+          <td>${l.convenio === "OUTRO" ? "Outro" : (l.convenio || "-")}</td>
+          <td>${l.origem === "manual" ? "Fora da base" : "Base"}</td>
+          <td>${l.profiles ? l.profiles.nome : "-"}</td>
+          <td><span class="badge ${l.status}">${STATUS_LABEL[l.status] || l.status}</span></td>
+        </tr>`).join("");
+    }
+
+    document.getElementById("btnFiltrarClientes").addEventListener("click", () => { CLI_LIMITE = 100; carregarClientes(); });
+    document.getElementById("cliBusca").addEventListener("keydown", (e) => { if (e.key === "Enter") { CLI_LIMITE = 100; carregarClientes(); } });
+    ["cliOrigem", "cliConvenio", "cliStatus", "cliOperador"].forEach((id) => document.getElementById(id).addEventListener("change", () => { CLI_LIMITE = 100; carregarClientes(); }));
+    document.getElementById("btnMaisClientes").addEventListener("click", () => { CLI_LIMITE += 100; carregarClientes(); });
+
+    document.getElementById("btnExportarClientes").addEventListener("click", async () => {
+      const erroEl = document.getElementById("erroClientes");
+      const btn = document.getElementById("btnExportarClientes");
+      btn.disabled = true; btn.textContent = "Gerando...";
+      erroEl.textContent = "";
+      const todos = [];
+      for (let ini = 0; ; ini += 1000) {
+        const { data, error } = await montarConsultaClientes(supabaseClient.from("leads").select("*, profiles(nome)"))
+          .order("criado_em", { ascending: false }).range(ini, ini + 999);
+        if (error) { erroEl.textContent = "Erro ao exportar: " + error.message; btn.disabled = false; btn.textContent = "Baixar Excel (filtro atual)"; return; }
+        todos.push(...data);
+        if (data.length < 1000) break;
+      }
+      const ws = XLSX.utils.json_to_sheet(todos.map((l) => ({
+        "Nome": l.nome, "CPF": l.cpf, "Data de nascimento": l.data_nascimento || "",
+        "Telefones": (l.telefones || []).join(" / "), "PMT": l.pmt,
+        "Convênio": l.convenio === "OUTRO" ? "Outro" : (l.convenio || ""),
+        "Origem": l.origem === "manual" ? "Fora da base" : "Base",
+        "Operador": l.profiles ? l.profiles.nome : "", "Status": STATUS_LABEL[l.status] || l.status,
+        "Cadastrado em": new Date(l.criado_em).toLocaleString("pt-BR"),
+      })));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Clientes");
+      XLSX.writeFile(wb, `clientes_MM_Credito_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      btn.disabled = false; btn.textContent = "Baixar Excel (filtro atual)";
+    });
 
     async function carregarTudo() {
       const [{ data: consultores }, { data: leads }, { data: tabulacoes }, { data: propostas }, { data: propostasTodas }, { data: sorteios }, { data: coeficientes }, { data: documentos }, { data: tabsEmAndamento }, { data: sorteiosEmAndamento }, { data: contratos }] = await Promise.all([
@@ -962,6 +1086,7 @@
         "Bairro": l.bairro, "Cidade": l.cidade, "UF": l.uf,
         "Telefone Confirmado": l.telefone_contato, "E-mail": l.email,
         "Banco": l.banco, "Agência": l.agencia, "Conta": l.conta, "Tipo de Conta": l.tipo_conta, "Chave PIX": l.chave_pix,
+        "Data de nascimento": l.data_nascimento || "", "Convênio": l.convenio || "", "Origem": l.origem === "manual" ? "Fora da base" : "Base",
         "Status": STATUS_LABEL[l.status] || l.status,
         "Consultor": l.profiles ? l.profiles.nome : "", "Carregado em": new Date(l.criado_em).toLocaleString("pt-BR"),
       }))), "Clientes");
