@@ -757,12 +757,12 @@
 
         // Reconhece o convênio pelos cadastrados em Coeficientes (sem diferenciar maiúsculas/acentos); o que não bater vira "OUTRO".
         const conveniosCadastrados = {};
-        COEFICIENTES.forEach((c) => { conveniosCadastrados[normalizarTexto(c.convenio)] = c.convenio; });
+        COEFICIENTES.forEach((c) => { conveniosCadastrados[normalizarCabecalho(c.convenio)] = c.convenio; });
         const naoReconhecidos = new Set();
         let semConvenioTabela = 0;
         leads.forEach((l) => {
           if (!("convenio" in l) || !l.convenio) return;
-          const achado = conveniosCadastrados[normalizarTexto(l.convenio)];
+          const achado = conveniosCadastrados[normalizarCabecalho(l.convenio)];
           if (achado) { l.convenio = achado; }
           else { naoReconhecidos.add(l.convenio); l.convenio = "OUTRO"; semConvenioTabela++; }
         });
