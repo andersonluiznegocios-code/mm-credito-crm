@@ -165,7 +165,7 @@
       const total = LEADS_CACHE.length;
       const andamento = LEADS_CACHE.filter((l) => l.status === "em_andamento").length;
       const tabulados = LEADS_CACHE.filter((l) => l.status === "tabulado").length;
-      const producao = CONTRATOS_CACHE.reduce((s, c) => s + (c.producao || 0), 0);
+      const producao = CONTRATOS_CACHE.filter(contratoConta).reduce((s, c) => s + (c.producao || 0), 0);
       const meta = PERFIL.meta_producao || 0;
       const pct = meta > 0 ? Math.min(100, (producao / meta) * 100) : 0;
       document.getElementById("stats").innerHTML = `
@@ -298,11 +298,11 @@
         </tr>
       `).join("");
 
-      const somaLiberacao = filtrados.reduce((s, c) => s + (c.liberacao || 0), 0);
-      const somaProducao = filtrados.reduce((s, c) => s + (c.producao || 0), 0);
+      const somaLiberacao = filtrados.filter(contratoConta).reduce((s, c) => s + (c.liberacao || 0), 0);
+      const somaProducao = filtrados.filter(contratoConta).reduce((s, c) => s + (c.producao || 0), 0);
       tfoot.innerHTML = `
         <tr>
-          <td colspan="7">Total (${filtrados.length} contrato${filtrados.length === 1 ? "" : "s"})</td>
+          <td colspan="7">Total (${filtrados.length} contrato${filtrados.length === 1 ? "" : "s"}; valores sem cancelados)</td>
           <td>${formatBRL(somaLiberacao)}</td>
           <td>${formatBRL(somaProducao)}</td>
           <td colspan="4"></td>
