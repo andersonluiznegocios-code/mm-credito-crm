@@ -131,3 +131,9 @@ function maskCPF(cpf) {
   if (digitos.length !== 11) return cpf;
   return `${digitos.slice(0, 3)}.XXX.XXX-${digitos.slice(9, 11)}`;
 }
+
+// Contrato conta para a produção só se NÃO estiver cancelado (situação ou esteira).
+function contratoConta(c) {
+  const txt = `${c.situacao || ""} ${c.esteira || ""}`.toLowerCase();
+  return !/cancel/.test(txt);
+}
