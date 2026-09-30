@@ -422,7 +422,7 @@
         const tabulados = meusLeads.filter((l) => l.status === "tabulado").length;
         const vendas = PROPOSTAS_TODAS.filter((p) => p.consultor_id === c.id).length;
         const conversao = meusLeads.length > 0 ? ((vendas / meusLeads.length) * 100).toFixed(1) : "0.0";
-        const producao = CONTRATOS.filter((ct) => ct.consultor_id === c.id).reduce((s, ct) => s + (ct.producao || 0), 0);
+        const producao = CONTRATOS.filter((ct) => ct.consultor_id === c.id && contratoConta(ct)).reduce((s, ct) => s + (ct.producao || 0), 0);
         const meta = c.meta_producao || 0;
         const pct = meta > 0 ? Math.min(100, (producao / meta) * 100) : 0;
         return `<tr>
@@ -751,12 +751,12 @@
         </tr>
       `).join("");
 
-      const somaLiberacao = filtrados.reduce((s, c) => s + (c.liberacao || 0), 0);
-      const somaProducao = filtrados.reduce((s, c) => s + (c.producao || 0), 0);
-      const somaTotal = filtrados.reduce((s, c) => s + (c.total || 0), 0);
+      const somaLiberacao = filtrados.filter(contratoConta).reduce((s, c) => s + (c.liberacao || 0), 0);
+      const somaProducao = filtrados.filter(contratoConta).reduce((s, c) => s + (c.producao || 0), 0);
+      const somaTotal = filtrados.filter(contratoConta).reduce((s, c) => s + (c.total || 0), 0);
       tfoot.innerHTML = `
         <tr>
-          <td colspan="9">Total (${filtrados.length} contrato${filtrados.length === 1 ? "" : "s"})</td>
+          <td colspan="9">Total (${filtrados.length} contrato${filtrados.length === 1 ? "" : "s"}; valores sem cancelados)</td>
           <td>${formatBRL(somaLiberacao)}</td>
           <td>${formatBRL(somaProducao)}</td>
           <td colspan="5"></td>
