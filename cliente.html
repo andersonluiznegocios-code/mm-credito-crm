@@ -534,6 +534,8 @@
         <div><span class="lbl">CPF</span><br>${LEAD.cpf || "-"}</div>
         <div><span class="lbl">PMT</span><br>${formatBRL(LEAD.pmt)}</div>
         <div><span class="lbl">Telefones (base)</span><br>${(LEAD.telefones || []).join(" · ") || "-"}</div>
+        ${LEAD.data_nascimento ? `<div><span class="lbl">Data de nascimento</span><br>${new Date(LEAD.data_nascimento + "T00:00:00").toLocaleDateString("pt-BR")}</div>` : ""}
+        ${LEAD.convenio ? `<div><span class="lbl">Convênio do cliente</span><br>${LEAD.convenio === "OUTRO" ? "Outro (sem tabela cadastrada)" : LEAD.convenio}</div>` : ""}
       `;
       // pré-preenche a linha de amortização do cartão de crédito com a PMT do cliente (é a parcela ANTIGA que ele já paga)
       const campoAmortCC = document.querySelector('.sim-parcela[data-produto="cartao_credito"][data-tipo="amortizacao"]');
@@ -941,10 +943,35 @@
         card.style.display = "none";
         mostrarFluxo(true);
       }
+      if (convenioSemTabela() && LEAD.status === "em_andamento") { card.style.display = ""; mostrarFluxo(false); }
       aplicarBloqueioSaida();
+      aplicarRegraConvenio();
+      preSelecionarConvenioDoCliente();
+    }
+
+    // Cliente fora da base com convênio sem tabela cadastrada: não abre simulação, só tabula.
+    function convenioSemTabela() {
+      return !!LEAD && LEAD.convenio === "OUTRO";
+    }
+    function aplicarRegraConvenio() {
+      const btn = document.getElementById("btnEscolherSimular");
+      if (convenioSemTabela()) {
+        btn.disabled = true;
+        btn.title = "Convênio sem tabela cadastrada: só é possível tabular.";
+        btn.textContent = "🧮 SIMULAR (indisponível: convênio sem tabela)";
+      }
+    }
+    // Pré-seleciona, nas linhas da simulação, o convênio do cliente (quando cadastrado)
+    function preSelecionarConvenioDoCliente() {
+      if (!LEAD || !LEAD.convenio || !COEFICIENTES[LEAD.convenio]) return;
+      document.querySelectorAll(".sim-convenio").forEach((sel) => {
+        sel.value = LEAD.convenio;
+        sel.dispatchEvent(new Event("change"));
+      });
     }
 
     document.getElementById("btnEscolherSimular").addEventListener("click", () => {
+      if (convenioSemTabela()) return;
       try { sessionStorage.setItem(`mm_simular_${LEAD.id}`, "1"); } catch (e) {}
       document.getElementById("secaoContato").style.display = "none";
       mostrarFluxo(true);
