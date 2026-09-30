@@ -19,6 +19,7 @@
   <div class="app-shell">
     <div class="sidebar">
       <div class="sidebar-item ativo" data-pagina="visao-geral" onclick="mudarPagina('visao-geral')">📊 Visão geral</div>
+      <div class="sidebar-item" data-pagina="funil" onclick="mudarPagina('funil')">📈 Funil</div>
       <div class="sidebar-item" data-pagina="clientes" onclick="mudarPagina('clientes')">👥 Clientes</div>
       <div class="sidebar-item" data-pagina="contratos" onclick="mudarPagina('contratos')">📄 Contratos</div>
       <div class="sidebar-item" data-pagina="sorteios" onclick="mudarPagina('sorteios')">🎲 Sorteios</div>
@@ -115,6 +116,44 @@
           </div>
         </div>
 
+        <!-- ===== PÁGINA: FUNIL ===== -->
+        <div class="page-panel" id="page-funil">
+          <h1>Funil por operador</h1>
+          <p class="subtitle">Do sorteio à venda, com a taxa de conversão de cada etapa. Escolha o período.</p>
+          <div class="card">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px;">
+              <div class="field"><label>Período</label>
+                <select id="funilPeriodo">
+                  <option value="hoje">Hoje</option>
+                  <option value="7">Últimos 7 dias</option>
+                  <option value="30">Últimos 30 dias</option>
+                  <option value="mes">Este mês</option>
+                  <option value="custom">Personalizado</option>
+                </select>
+              </div>
+              <div class="field funil-custom hidden"><label>De</label><input type="date" id="funilDe"></div>
+              <div class="field funil-custom hidden"><label>Até</label><input type="date" id="funilAte"></div>
+            </div>
+            <button class="btn" id="btnFunil">Atualizar</button>
+            <span class="hint" id="funilResumo"></span>
+            <div class="error-msg" id="erroFunil"></div>
+          </div>
+          <div class="card">
+            <h2 style="margin-top:0;">Equipe toda</h2>
+            <div id="funilBarras"></div>
+          </div>
+          <div class="card">
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Operador</th><th>Atendimentos</th><th>Não localizados</th><th>Contatos</th><th>% contato</th><th>Simulações</th><th>% simulou</th><th>Vendas</th><th>% venda</th></tr></thead>
+                <tbody id="tbodyFunil"></tbody>
+                <tfoot id="tfootFunil"></tfoot>
+              </table>
+            </div>
+            <p class="hint">Atendimentos = clientes sorteados + cadastrados fora da base. Contato = falou com o cliente (simulou, vai pensar, reagendou, sem interesse, recusou ou vendeu). % contato = contatos ÷ atendimentos; % simulou = simulações ÷ contatos; % venda = vendas ÷ simulações.</p>
+          </div>
+        </div>
+
         <!-- ===== PÁGINA: CLIENTES ===== -->
         <div class="page-panel" id="page-clientes">
           <h1>Clientes</h1>
@@ -137,7 +176,7 @@
           <div class="card">
             <div class="table-wrap">
               <table>
-                <thead><tr><th>Nome</th><th>CPF</th><th>Nascimento</th><th>Telefones</th><th>PMT</th><th>Convênio</th><th>Origem</th><th>Operador</th><th>Status</th></tr></thead>
+                <thead><tr><th>Nome</th><th>CPF</th><th>Nascimento</th><th>Telefones</th><th>PMT</th><th>Convênio</th><th>Origem</th><th>Operador</th><th>Status</th><th></th></tr></thead>
                 <tbody id="tbodyClientes"></tbody>
               </table>
             </div>
@@ -150,6 +189,13 @@
           <h1>Histórico de sorteios</h1>
           <div class="card">
             <p class="hint" style="margin-top:0;">Rastro de qual consultor sorteou qual cliente, com data e horário.</p>
+            <div style="border:1px solid #2a3868; border-radius:8px; padding:12px; margin-bottom:14px;">
+              <strong style="color:var(--gold-soft);">Regras da fila</strong>
+              <p class="hint" style="margin-top:4px;">Cliente não localizado volta ao fim da fila e só pode ser sorteado de novo depois de:</p>
+              <input type="number" min="0" step="1" id="cfgDiasRetorno" style="width:90px;"> dia(s)
+              <button class="btn secondary" id="btnSalvarDiasRetorno" style="margin-left:8px;">Salvar</button>
+              <span class="hint" id="cfgDiasMsg"></span>
+            </div>
             <div class="field" style="max-width:280px;"><label>Operador</label><select id="filtroSorteioConsultor"><option value="">Todos os operadores</option></select></div>
             <div class="hint" id="resumoSorteios"></div>
             <div class="table-wrap">
@@ -242,6 +288,19 @@
     </div>
   </div>
 
+  <div class="modal-overlay hidden" id="histOverlay">
+    <div class="modal" style="max-width:760px;">
+      <button class="modal-close" onclick="document.getElementById('histOverlay').classList.add('hidden')">&times;</button>
+      <h3 id="histTitulo">Histórico</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Data</th><th>Operador</th><th>Evento</th><th>Detalhe</th></tr></thead>
+          <tbody id="tbodyHist"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="config.js"></script>
@@ -270,8 +329,97 @@
       document.querySelectorAll(".page-panel").forEach((el) => el.classList.toggle("ativa", el.id === "page-" + nome));
       if (nome === "contratos" && CONTRATOS.length === 0) carregarContratos();
       if (nome === "clientes") carregarClientes();
+      if (nome === "funil") carregarFunil();
+      if (nome === "sorteios") carregarDiasRetorno();
     }
 
+
+
+    // ---------- Histórico do cliente (modal) ----------
+    const EVENTO_LABEL = { sorteio: "Sorteado", tabulacao: "Tabulação", simulacao: "Simulação", proposta: "Proposta (venda)", liberado: "Liberado para a fila", cadastro_manual: "Cadastrado fora da base" };
+    function detalheEvento(e) {
+      const d = e.detalhe || {};
+      if (e.tipo === "tabulacao") return `${RESULTADO_LABEL[d.resultado] || d.resultado}${d.observacao ? " — " + d.observacao : ""}${d.reagendado_para ? " (retorno " + new Date(d.reagendado_para).toLocaleString("pt-BR") + ")" : ""}`;
+      if (e.tipo === "simulacao" || e.tipo === "proposta") return `${formatBRL(d.valor_contrato)} em ${d.prazo || "-"} meses`;
+      if (e.tipo === "cadastro_manual") return d.convenio && d.convenio !== "OUTRO" ? `Convênio: ${d.convenio}` : "";
+      return "";
+    }
+    async function abrirHistorico(leadId, nome) {
+      document.getElementById("histTitulo").textContent = `Histórico — ${nome || "cliente"}`;
+      const tbody = document.getElementById("tbodyHist");
+      tbody.innerHTML = `<tr><td colspan="4" style="color:var(--muted);">Carregando...</td></tr>`;
+      document.getElementById("histOverlay").classList.remove("hidden");
+      const { data, error } = await supabaseClient.from("lead_eventos").select("*, profiles(nome)").eq("lead_id", leadId).order("criado_em", { ascending: false });
+      if (error) { tbody.innerHTML = `<tr><td colspan="4" style="color:var(--muted);">Erro: ${error.message}</td></tr>`; return; }
+      if (!data || data.length === 0) { tbody.innerHTML = `<tr><td colspan="4" style="color:var(--muted);">Sem registros.</td></tr>`; return; }
+      tbody.innerHTML = data.map((e) => `<tr><td>${new Date(e.criado_em).toLocaleString("pt-BR")}</td><td>${e.profiles ? e.profiles.nome : "-"}</td><td>${EVENTO_LABEL[e.tipo] || e.tipo}</td><td>${detalheEvento(e)}</td></tr>`).join("");
+    }
+
+    // ---------- Regras da fila (dias de retorno) ----------
+    async function carregarDiasRetorno() {
+      const { data } = await supabaseClient.rpc("obter_configuracao", { p_chave: "dias_retorno_nao_localizado" });
+      document.getElementById("cfgDiasRetorno").value = data ?? 2;
+    }
+    document.getElementById("btnSalvarDiasRetorno").addEventListener("click", async () => {
+      const msg = document.getElementById("cfgDiasMsg");
+      const dias = parseInt(document.getElementById("cfgDiasRetorno").value, 10);
+      if (Number.isNaN(dias) || dias < 0) { msg.style.color = "var(--danger)"; msg.textContent = " Informe um número de dias (0 ou mais)."; return; }
+      const { error } = await supabaseClient.rpc("salvar_configuracao", { p_chave: "dias_retorno_nao_localizado", p_valor: String(dias) });
+      msg.style.color = error ? "var(--danger)" : "var(--success)";
+      msg.textContent = error ? " Erro: " + error.message : " Salvo.";
+    });
+
+    // ---------- Funil por operador ----------
+    function periodoFunil() {
+      const tipo = document.getElementById("funilPeriodo").value;
+      const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+      let ini = new Date(hoje), fim = new Date(hoje); fim.setDate(fim.getDate() + 1);
+      if (tipo === "7") ini.setDate(ini.getDate() - 6);
+      else if (tipo === "30") ini.setDate(ini.getDate() - 29);
+      else if (tipo === "mes") ini = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+      else if (tipo === "custom") {
+        const de = document.getElementById("funilDe").value, ate = document.getElementById("funilAte").value;
+        if (!de || !ate) return null;
+        ini = new Date(de + "T00:00:00");
+        fim = new Date(ate + "T00:00:00"); fim.setDate(fim.getDate() + 1);
+      }
+      return { ini, fim };
+    }
+    const pct = (a, b) => (b > 0 ? ((a / b) * 100).toFixed(1) + "%" : "-");
+
+    async function carregarFunil() {
+      const erroEl = document.getElementById("erroFunil");
+      erroEl.textContent = "";
+      const p = periodoFunil();
+      if (!p) { erroEl.textContent = "Informe as duas datas do período."; return; }
+      const { data, error } = await supabaseClient.rpc("funil_por_operador", { p_ini: p.ini.toISOString(), p_fim: p.fim.toISOString() });
+      if (error) { erroEl.textContent = "Erro ao carregar o funil: " + error.message; return; }
+      const linhas = (data || []).map((r) => ({ ...r, atend: Number(r.sorteados) + Number(r.manuais), contatos: Number(r.contatos), simulacoes: Number(r.simulacoes), vendas: Number(r.vendas), naoLoc: Number(r.nao_localizados) }));
+      const tot = linhas.reduce((t, r) => ({ atend: t.atend + r.atend, naoLoc: t.naoLoc + r.naoLoc, contatos: t.contatos + r.contatos, simulacoes: t.simulacoes + r.simulacoes, vendas: t.vendas + r.vendas }), { atend: 0, naoLoc: 0, contatos: 0, simulacoes: 0, vendas: 0 });
+      document.getElementById("funilResumo").textContent = ` ${p.ini.toLocaleDateString("pt-BR")} a ${new Date(p.fim - 1).toLocaleDateString("pt-BR")}`;
+
+      const max = Math.max(tot.atend, 1);
+      const barra = (rot, val, ant) => `
+        <div style="display:flex; align-items:center; gap:10px; margin:6px 0;">
+          <div style="width:130px; font-size:13px; color:var(--muted);">${rot}</div>
+          <div style="flex:1; background:#0d1430; border-radius:6px; height:22px; position:relative;">
+            <div style="width:${(val / max) * 100}%; min-width:2px; background:var(--gold); height:100%; border-radius:6px;"></div>
+          </div>
+          <div style="width:140px; font-size:13px;"><strong>${val}</strong> <span class="hint">${ant === null ? "" : pct(val, ant)}</span></div>
+        </div>`;
+      document.getElementById("funilBarras").innerHTML =
+        barra("Atendimentos", tot.atend, null) + barra("Contatos", tot.contatos, tot.atend) + barra("Simulações", tot.simulacoes, tot.contatos) + barra("Vendas", tot.vendas, tot.simulacoes);
+
+      document.getElementById("tbodyFunil").innerHTML = linhas.length === 0
+        ? `<tr><td colspan="9" style="color:var(--muted);">Nenhum operador.</td></tr>`
+        : linhas.map((r) => `<tr><td>${r.operador_nome}</td><td>${r.atend}</td><td>${r.naoLoc}</td><td>${r.contatos}</td><td>${pct(r.contatos, r.atend)}</td><td>${r.simulacoes}</td><td>${pct(r.simulacoes, r.contatos)}</td><td>${r.vendas}</td><td>${pct(r.vendas, r.simulacoes)}</td></tr>`).join("");
+      document.getElementById("tfootFunil").innerHTML = `<tr><td><strong>Total</strong></td><td>${tot.atend}</td><td>${tot.naoLoc}</td><td>${tot.contatos}</td><td>${pct(tot.contatos, tot.atend)}</td><td>${tot.simulacoes}</td><td>${pct(tot.simulacoes, tot.contatos)}</td><td>${tot.vendas}</td><td>${pct(tot.vendas, tot.simulacoes)}</td></tr>`;
+    }
+    document.getElementById("btnFunil").addEventListener("click", carregarFunil);
+    document.getElementById("funilPeriodo").addEventListener("change", (e) => {
+      document.querySelectorAll(".funil-custom").forEach((el) => el.classList.toggle("hidden", e.target.value !== "custom"));
+      if (e.target.value !== "custom") carregarFunil();
+    });
 
     // ---------- Clientes (lista completa + mailing) ----------
     let CLI_LIMITE = 100;
@@ -310,14 +458,14 @@
       const erroEl = document.getElementById("erroClientes");
       erroEl.textContent = "";
       const tbody = document.getElementById("tbodyClientes");
-      tbody.innerHTML = `<tr><td colspan="9" style="color:var(--muted);">Carregando...</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="10" style="color:var(--muted);">Carregando...</td></tr>`;
       const q = montarConsultaClientes(supabaseClient.from("leads").select("*, profiles(nome)", { count: "exact" }))
         .order("criado_em", { ascending: false }).limit(CLI_LIMITE);
       const { data, error, count } = await q;
       if (error) { tbody.innerHTML = ""; erroEl.textContent = "Erro ao carregar clientes: " + error.message; return; }
       document.getElementById("cliResumo").textContent = `${count ?? data.length} cliente(s) no filtro · mostrando ${data.length}`;
       document.getElementById("btnMaisClientes").classList.toggle("hidden", !count || data.length >= count);
-      if (data.length === 0) { tbody.innerHTML = `<tr><td colspan="9" style="color:var(--muted);">Nenhum cliente encontrado.</td></tr>`; return; }
+      if (data.length === 0) { tbody.innerHTML = `<tr><td colspan="10" style="color:var(--muted);">Nenhum cliente encontrado.</td></tr>`; return; }
       tbody.innerHTML = data.map((l) => `
         <tr>
           <td>${l.nome || "(sem nome)"}</td>
@@ -329,6 +477,7 @@
           <td>${l.origem === "manual" ? "Fora da base" : "Base"}</td>
           <td>${l.profiles ? l.profiles.nome : "-"}</td>
           <td><span class="badge ${l.status}">${STATUS_LABEL[l.status] || l.status}</span></td>
+          <td><button class="btn secondary" style="padding:4px 10px; font-size:12px;" onclick="abrirHistorico(${l.id}, '${(l.nome || "").replace(/['"\\]/g, " ")}')">Histórico</button></td>
         </tr>`).join("");
     }
 
@@ -622,7 +771,7 @@
     function renderConsultores() {
       const tbody = document.getElementById("tbodyConsultores");
       if (CONSULTORES.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" style="color:var(--muted);">Nenhum consultor cadastrado ainda.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" style="color:var(--muted);">Nenhum consultor cadastrado ainda.</td></tr>`;
         return;
       }
       tbody.innerHTML = CONSULTORES.map((c) => {
@@ -1008,7 +1157,7 @@
       const somaTotal = filtrados.filter(contratoConta).reduce((s, c) => s + (c.total || 0), 0);
       tfoot.innerHTML = `
         <tr>
-          <td colspan="9">Total (${filtrados.length} contrato${filtrados.length === 1 ? "" : "s"}; valores sem cancelados)</td>
+          <td colspan="10">Total (${filtrados.length} contrato${filtrados.length === 1 ? "" : "s"}; valores sem cancelados)</td>
           <td>${formatBRL(somaLiberacao)}</td>
           <td>${formatBRL(somaProducao)}</td>
           <td colspan="5"></td>
