@@ -1141,20 +1141,27 @@
       if (!SR) { botoes.forEach((b) => b.classList.add("hidden")); return; }
       botoes.forEach((btn) => {
         let rec = null;
+        const resetar = () => { btn.textContent = "🎤 Ditar observação"; };
         btn.addEventListener("click", () => {
-          if (rec) { rec.stop(); return; }
-          rec = new SR();
-          rec.lang = "pt-BR"; rec.interimResults = false; rec.continuous = true;
+          // segundo clique: para na hora (a interface volta ao normal sem esperar o navegador)
+          if (rec) {
+            const r = rec; rec = null; resetar();
+            try { r.stop(); } catch (e) {}
+            setTimeout(() => { try { r.abort(); } catch (e) {} }, 1500);
+            return;
+          }
+          const r = new SR();
+          rec = r;
+          r.lang = "pt-BR"; r.interimResults = false; r.continuous = true;
           const alvo = document.getElementById(btn.dataset.alvo);
-          btn.textContent = "⏹ Parar ditado";
-          rec.onresult = (ev) => {
+          r.onresult = (ev) => {
             let texto = "";
             for (let i = ev.resultIndex; i < ev.results.length; i++) if (ev.results[i].isFinal) texto += ev.results[i][0].transcript + " ";
             if (texto) alvo.value = (alvo.value ? alvo.value.trimEnd() + " " : "") + texto.trim();
           };
-          rec.onerror = () => { btn.textContent = "🎤 Ditar observação"; rec = null; };
-          rec.onend = () => { btn.textContent = "🎤 Ditar observação"; rec = null; };
-          rec.start();
+          r.onerror = () => { if (rec === r) { rec = null; resetar(); } };
+          r.onend = () => { if (rec === r) { rec = null; resetar(); } };
+          try { r.start(); btn.textContent = "⏹ Parar ditado"; } catch (e) { rec = null; resetar(); }
         });
       });
     })();
