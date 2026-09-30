@@ -26,6 +26,7 @@ async function exigirLogin(roleExigida) {
     window.location.href = profile.role === "admin" ? "admin.html" : "consultor.html";
     return null;
   }
+  registrarAcessoSessao(profile);
   return { session, profile };
 }
 
@@ -181,4 +182,85 @@ function maskCPF(cpf) {
 function contratoConta(c) {
   const txt = `${c.situacao || ""} ${c.esteira || ""}`.toLowerCase();
   return !/cancel/.test(txt);
+}
+
+
+// ---------- Registro de acesso (uma vez por aba/sessão) ----------
+function registrarAcessoSessao(profile) {
+  try {
+    if (sessionStorage.getItem("mm_acesso_registrado") === "1") return;
+    sessionStorage.setItem("mm_acesso_registrado", "1");
+  } catch (e) {}
+  supabaseClient.rpc("registrar_acesso", { p_evento: "login", p_detalhe: { papel: profile.role, pagina: location.pathname.split("/").pop() } }).then(() => {}, () => {});
+}
+function registrarEvento(evento, detalhe) {
+  return supabaseClient.rpc("registrar_acesso", { p_evento: evento, p_detalhe: detalhe || {} }).then(() => {}, () => {});
+}
+
+// ---------- Quem está online (presença em tempo real) ----------
+let CANAL_PRESENCA = null;
+function entrarPresenca(profile, aoMudar) {
+  try {
+    CANAL_PRESENCA = supabaseClient.channel("mm-online", { config: { presence: { key: profile.id } } });
+    if (aoMudar) CANAL_PRESENCA.on("presence", { event: "sync" }, () => aoMudar(CANAL_PRESENCA.presenceState()));
+    CANAL_PRESENCA.subscribe(async (status) => {
+      if (status === "SUBSCRIBED" && profile.role === "consultor") {
+        await CANAL_PRESENCA.track({ nome: profile.nome, desde: new Date().toISOString(), pagina: location.pathname.split("/").pop() });
+      }
+    });
+  } catch (e) { console.warn("presença indisponível", e); }
+}
+
+// ---------- Lembretes de retorno (aviso na tela) ----------
+function iniciarLembretes(profile) {
+  const JANELA_MIN = 10;
+  function beep() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination); o.frequency.value = 880; g.gain.value = 0.15;
+      o.start(); setTimeout(() => { o.stop(); ctx.close(); }, 350);
+    } catch (e) {}
+  }
+  function jaAvisado(chave) { try { return (JSON.parse(localStorage.getItem("mm_lembretes") || "[]")).includes(chave); } catch (e) { return false; } }
+  function marcar(chave) { try { const l = JSON.parse(localStorage.getItem("mm_lembretes") || "[]"); l.push(chave); localStorage.setItem("mm_lembretes", JSON.stringify(l.slice(-200))); } catch (e) {} }
+  function mostrar(lead, quando, atrasado) {
+    let box = document.getElementById("mmLembretes");
+    if (!box) {
+      box = document.createElement("div");
+      box.id = "mmLembretes";
+      box.style.cssText = "position:fixed; top:14px; right:14px; z-index:100; display:flex; flex-direction:column; gap:10px; max-width:340px;";
+      document.body.appendChild(box);
+    }
+    const hora = quando.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    const card = document.createElement("div");
+    card.style.cssText = "background:#161F42; border:2px solid #D4AF37; border-radius:12px; padding:14px; color:#F3F1EA; box-shadow:0 8px 24px rgba(0,0,0,.5); font-size:14px;";
+    card.innerHTML = `<div style="color:#D4AF37; font-weight:700; margin-bottom:4px;">⏰ ${atrasado ? "Retorno atrasado" : "Retorno chegando"} — ${hora}</div>
+      <div style="margin-bottom:10px;">${lead.nome || "(sem nome)"}</div>
+      <a href="cliente.html?id=${lead.id}" style="background:#D4AF37; color:#0B1026; text-decoration:none; padding:6px 12px; border-radius:8px; font-weight:700; margin-right:8px;">Abrir cliente</a>
+      <button type="button" style="background:none; border:1px solid #AEB6D3; color:#AEB6D3; padding:5px 10px; border-radius:8px; cursor:pointer;">Dispensar</button>`;
+    card.querySelector("button").onclick = () => card.remove();
+    box.appendChild(card);
+    beep();
+    try { if ("Notification" in window && Notification.permission === "granted") new Notification("Retorno de cliente", { body: `${lead.nome || "Cliente"} — ${hora}` }); } catch (e) {}
+  }
+  async function verificar() {
+    const { data } = await supabaseClient.from("leads").select("id, nome, tabulacoes(resultado, criado_em, reagendado_para)")
+      .eq("atribuido_a", profile.id).eq("status", "em_andamento");
+    const agora = Date.now();
+    (data || []).forEach((l) => {
+      const tabs = (l.tabulacoes || []).slice().sort((a, b) => new Date(b.criado_em) - new Date(a.criado_em));
+      const ult = tabs[0];
+      if (!ult || ult.resultado !== "reagendar" || !ult.reagendado_para) return;
+      const quando = new Date(ult.reagendado_para);
+      const diffMin = (quando - agora) / 60000;
+      const chave = `${l.id}|${ult.reagendado_para}`;
+      const hoje = new Date().toDateString() === quando.toDateString();
+      if (jaAvisado(chave)) return;
+      if (diffMin <= JANELA_MIN && (diffMin > -720 || hoje)) { marcar(chave); mostrar(l, quando, diffMin < 0); }
+    });
+  }
+  try { if ("Notification" in window && Notification.permission === "default") Notification.requestPermission(); } catch (e) {}
+  verificar();
+  setInterval(verificar, 60000);
 }
