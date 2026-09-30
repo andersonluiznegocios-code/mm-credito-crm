@@ -18,7 +18,7 @@
 
   <div class="app-shell">
     <div class="sidebar">
-      <div class="sidebar-item ativo" data-pagina="sorteio" onclick="mudarPagina('sorteio')">🎲 Sorteio</div>
+      <div class="sidebar-item ativo" data-pagina="sorteio" onclick="mudarPagina('sorteio')">🎲 Sorteio <span id="badgeRetornos" class="hidden" style="background:var(--danger); color:#fff; border-radius:10px; padding:1px 7px; font-size:11px; margin-left:4px;"></span></div>
       <div class="sidebar-item" data-pagina="novocliente" onclick="mudarPagina('novocliente')">➕ Novo cliente (fora da base)</div>
       <div class="sidebar-item" data-pagina="contratos" onclick="mudarPagina('contratos')">📄 Contratos</div>
     </div>
@@ -30,6 +30,22 @@
         <div class="page-panel ativa" id="page-sorteio">
           <h1>Meus clientes</h1>
           <p class="subtitle">Sorteie um novo cliente quando quiser trabalhar em alguém novo. Clique num cliente já sorteado pra abrir a tela dele.</p>
+
+          <div class="card hidden" id="cardPendente" style="border:1px solid var(--gold-soft);">
+            <h2 style="margin-top:0; color:var(--gold-soft);">⚠ Cliente aguardando tabulação</h2>
+            <p class="hint" style="margin-top:0;">Você precisa tabular ou finalizar este cliente antes de sortear outro ou cadastrar um novo.</p>
+            <a class="btn" id="linkPendente" href="#" style="display:inline-block; text-decoration:none;">Continuar atendimento</a>
+          </div>
+
+          <div class="card hidden" id="cardReagendamentos">
+            <h2 style="margin-top:0;">📅 Retornos de hoje (ou atrasados)</h2>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Cliente</th><th>CPF</th><th>Reagendado para</th></tr></thead>
+                <tbody id="tbodyReagendamentos"></tbody>
+              </table>
+            </div>
+          </div>
 
           <div class="card">
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
@@ -49,15 +65,6 @@
             </div>
           </div>
 
-          <div class="card hidden" id="cardReagendamentos">
-            <h2 style="margin-top:0;">📅 Retornos de hoje (ou atrasados)</h2>
-            <div class="table-wrap">
-              <table>
-                <thead><tr><th>Cliente</th><th>CPF</th><th>Reagendado para</th></tr></thead>
-                <tbody id="tbodyReagendamentos"></tbody>
-              </table>
-            </div>
-          </div>
 
           <div class="grid-stats" id="stats"></div>
 
@@ -192,7 +199,11 @@
         p_data_nascimento: nasc, p_convenio: convSel === OUTRO_CONVENIO ? "OUTRO" : convSel,
       });
       btn.disabled = false; btn.textContent = "Cadastrar e abrir atendimento";
-      if (error) { erroEl.textContent = "Erro ao cadastrar: " + error.message; return; }
+      if (error) {
+        const mp = /CLIENTE_PENDENTE:(\d+)/.exec(error.message || "");
+        if (mp) { erroEl.textContent = "Você tem um cliente aguardando tabulação. Abrindo o atendimento..."; setTimeout(() => { window.location.href = `cliente.html?id=${mp[1]}`; }, 1200); return; }
+        erroEl.textContent = "Erro ao cadastrar: " + error.message; return;
+      }
       window.location.href = `cliente.html?id=${data.id}`;
     });
 
@@ -225,6 +236,9 @@
         .sort((a, b) => new Date(a.ultima.reagendado_para) - new Date(b.ultima.reagendado_para));
 
       const card = document.getElementById("cardReagendamentos");
+      const badge = document.getElementById("badgeRetornos");
+      badge.textContent = pendentes.length;
+      badge.classList.toggle("hidden", pendentes.length === 0);
       if (pendentes.length === 0) { card.classList.add("hidden"); return; }
       card.classList.remove("hidden");
       document.getElementById("tbodyReagendamentos").innerHTML = pendentes.map(({ lead, ultima }) => {
@@ -311,11 +325,26 @@
 
       const { data, error } = await supabaseClient.rpc("sortear_cliente");
 
-      if (error) { erroEl.textContent = "Erro ao sortear: " + error.message; btn.disabled = false; btn.textContent = "Sortear novo cliente"; return; }
+      if (error) {
+        const mp = /CLIENTE_PENDENTE:(\d+)/.exec(error.message || "");
+        if (mp) { window.location.href = `cliente.html?id=${mp[1]}`; return; }
+        erroEl.textContent = "Erro ao sortear: " + error.message; btn.disabled = false; btn.textContent = "Sortear novo cliente"; return;
+      }
       if (!data) { erroEl.textContent = "Não há clientes disponíveis no momento."; btn.disabled = false; btn.textContent = "Sortear novo cliente"; atualizarDisponiveis(); return; }
 
       window.location.href = `cliente.html?id=${data.id}`;
     });
+
+    async function verificarPendente() {
+      const { data } = await supabaseClient.rpc("cliente_pendente");
+      const card = document.getElementById("cardPendente");
+      if (data) {
+        document.getElementById("linkPendente").href = `cliente.html?id=${data}`;
+        card.classList.remove("hidden");
+      } else {
+        card.classList.add("hidden");
+      }
+    }
 
     async function carregarRanking() {
       const { data, error } = await supabaseClient.rpc("ranking_consultores");
@@ -394,6 +423,7 @@
       PERFIL = auth.profile;
       document.getElementById("whoami").textContent = PERFIL.nome;
       carregarLeads();
+      verificarPendente();
       carregarConveniosNovoCliente();
       atualizarDisponiveis();
       carregarRanking();
