@@ -37,6 +37,28 @@
             <a class="btn" id="linkPendente" href="#" style="display:inline-block; text-decoration:none;">Continuar atendimento</a>
           </div>
 
+          <div class="card" id="cardMetaDia">
+            <h2 style="margin-top:0;">🎯 Minha meta de hoje</h2>
+            <div id="metaDiaBarras"></div>
+            <h3 style="margin-bottom:6px; color:var(--gold-soft);">Ranking do dia</h3>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>#</th><th>Consultor</th><th>Atendimentos</th><th>Simulações</th><th>Vendas</th></tr></thead>
+                <tbody id="tbodyRankingDia"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card hidden" id="cardBoletos">
+            <h2 style="margin-top:0;">🧾 Meus boletos de quitação pendentes</h2>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Cliente</th><th>Forma</th><th>Banco / contrato</th><th>Vencimento</th><th>Situação</th></tr></thead>
+                <tbody id="tbodyBoletosMeus"></tbody>
+              </table>
+            </div>
+          </div>
+
           <div class="card hidden" id="cardReagendamentos">
             <h2 style="margin-top:0;">📅 Retornos de hoje (ou atrasados)</h2>
             <div class="table-wrap">
@@ -335,6 +357,53 @@
       window.location.href = `cliente.html?id=${data.id}`;
     });
 
+
+    // ---------- Meta e ranking do dia ----------
+    function inicioDoDia() { const d = new Date(); d.setHours(0, 0, 0, 0); return d.toISOString(); }
+    function barraMeta(rotulo, valor, meta) {
+      const v = Number(valor) || 0, m = Number(meta) || 0;
+      const pct = m > 0 ? Math.min(100, (v / m) * 100) : 0;
+      return `<div style="margin:10px 0;">
+        <div style="display:flex; justify-content:space-between; font-size:14px;"><span>${rotulo}</span><strong>${v}${m > 0 ? " / " + m : ""}${m > 0 && v >= m ? " ✅" : ""}</strong></div>
+        ${m > 0 ? `<div class="meta-progress" style="width:100%; height:12px;"><div class="meta-progress-fill${pct >= 100 ? " completo" : ""}" style="width:${pct}%;"></div></div>` : `<div class="hint">Sem meta definida pelo administrador.</div>`}
+      </div>`;
+    }
+    async function carregarMetaDia() {
+      const ini = inicioDoDia();
+      const [{ data: prog }, { data: rank }] = await Promise.all([
+        supabaseClient.rpc("progresso_dia", { p_ini: ini }),
+        supabaseClient.rpc("ranking_dia", { p_ini: ini }),
+      ]);
+      const p = (prog && prog[0]) || {};
+      document.getElementById("metaDiaBarras").innerHTML =
+        barraMeta("Atendimentos", p.atendimentos, p.meta_atendimentos) + barraMeta("Simulações", p.simulacoes, p.meta_simulacoes) +
+        `<div style="font-size:14px; margin:10px 0;">Vendas hoje: <strong>${p.vendas || 0}</strong></div>`;
+      document.getElementById("tbodyRankingDia").innerHTML = (rank || []).map((c, i) => `
+        <tr style="${c.consultor_id === PERFIL.id ? "background: rgba(212,175,55,0.1); font-weight:bold;" : ""}">
+          <td>${i + 1}º</td><td>${c.nome}${c.consultor_id === PERFIL.id ? " (você)" : ""}</td><td>${c.atendimentos}</td><td>${c.simulacoes}</td><td>${c.vendas}</td>
+        </tr>`).join("") || `<tr><td colspan="5" style="color:var(--muted);">Sem dados hoje.</td></tr>`;
+    }
+
+    // ---------- Meus boletos de quitação ----------
+    const FORMA_BOLETO = { bacen: "Bacen", consumidor: "Consumidor", procuracao: "Procuração", contato_interno: "Contato interno" };
+    async function carregarBoletosMeus() {
+      const { data } = await supabaseClient.from("boletos_quitacao").select("*, leads(nome)")
+        .eq("consultor_id", PERFIL.id).eq("status", "pendente").order("vencimento");
+      const card = document.getElementById("cardBoletos");
+      if (!data || data.length === 0) { card.classList.add("hidden"); return; }
+      card.classList.remove("hidden");
+      const hoje = new Date().toISOString().slice(0, 10);
+      document.getElementById("tbodyBoletosMeus").innerHTML = data.map((b) => {
+        const atrasado = b.vencimento < hoje, hojeVence = b.vencimento === hoje;
+        const cor = atrasado ? "color:var(--danger); font-weight:bold;" : hojeVence ? "color:var(--gold-soft); font-weight:bold;" : "";
+        return `<tr style="cursor:pointer;" onclick="window.location.href='cliente.html?id=${b.lead_id}'">
+          <td>${b.leads ? b.leads.nome : "(cliente)"}</td><td>${FORMA_BOLETO[b.forma] || b.forma}</td>
+          <td>${b.banco || "-"}${b.contrato ? " · " + b.contrato : ""}</td>
+          <td style="${cor}">${new Date(b.vencimento + "T00:00:00").toLocaleDateString("pt-BR")}</td>
+          <td style="${cor}">${atrasado ? "ATRASADO" : hojeVence ? "Vence hoje" : "Pendente"}</td></tr>`;
+      }).join("");
+    }
+
     async function verificarPendente() {
       const { data } = await supabaseClient.rpc("cliente_pendente");
       const card = document.getElementById("cardPendente");
@@ -424,6 +493,8 @@
       document.getElementById("whoami").textContent = PERFIL.nome;
       carregarLeads();
       verificarPendente();
+      carregarMetaDia();
+      carregarBoletosMeus();
       carregarConveniosNovoCliente();
       atualizarDisponiveis();
       carregarRanking();
