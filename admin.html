@@ -41,7 +41,7 @@
 
           <h2>Carregar clientes (CSV)</h2>
           <div class="card">
-            <p class="hint" style="margin-top:0;">Arquivo CSV com colunas: CPF, NOME, PMT, TELEFONE (telefones separados por ; ) — igual às bases que você já usa.</p>
+            <p class="hint" style="margin-top:0;">Arquivo CSV com colunas: CPF, NOME, PMT, TELEFONE (telefones separados por ; ) — igual às bases que você já usa. Colunas opcionais: CONVENIO (reconhecido automaticamente pelos convênios cadastrados em Coeficientes) e DATA_NASCIMENTO (dd/mm/aaaa ou aaaa-mm-dd).</p>
             <input type="file" id="arquivoCsv" accept=".csv">
             <button class="btn" id="btnImportar" style="margin-left:10px;">Importar</button>
             <div class="error-msg" id="erroImport"></div>
@@ -755,6 +755,18 @@
         const leads = parseLeadsCSV(texto);
         if (leads.length === 0) { erroEl.textContent = "Nenhum cliente válido encontrado no arquivo."; btn.disabled = false; btn.textContent = "Importar"; return; }
 
+        // Reconhece o convênio pelos cadastrados em Coeficientes (sem diferenciar maiúsculas/acentos); o que não bater vira "OUTRO".
+        const conveniosCadastrados = {};
+        COEFICIENTES.forEach((c) => { conveniosCadastrados[normalizarTexto(c.convenio)] = c.convenio; });
+        const naoReconhecidos = new Set();
+        let semConvenioTabela = 0;
+        leads.forEach((l) => {
+          if (!("convenio" in l) || !l.convenio) return;
+          const achado = conveniosCadastrados[normalizarTexto(l.convenio)];
+          if (achado) { l.convenio = achado; }
+          else { naoReconhecidos.add(l.convenio); l.convenio = "OUTRO"; semConvenioTabela++; }
+        });
+
         // insere em lotes de 500; CPF duplicado (já existente na base) é ignorado, não duplica
         const TAM_LOTE = 500;
         let totalInseridos = 0;
@@ -774,6 +786,9 @@
         erroEl.textContent = duplicados > 0
           ? `${totalInseridos} cliente(s) novo(s) importado(s). ${duplicados} já existiam na base (CPF duplicado, ignorados).`
           : `${totalInseridos} cliente(s) importado(s) com sucesso.`;
+        if (naoReconhecidos.size > 0) {
+          erroEl.textContent += ` Convênio(s) não reconhecido(s), importados como "Outro" (${semConvenioTabela} linha(s)): ${[...naoReconhecidos].slice(0, 10).join(", ")}${naoReconhecidos.size > 10 ? "…" : ""}. Cadastre em Coeficientes ou corrija a planilha.`;
+        }
       } catch (e) {
         erroEl.style.color = "var(--danger)";
         erroEl.textContent = "Erro ao importar: " + e.message;
