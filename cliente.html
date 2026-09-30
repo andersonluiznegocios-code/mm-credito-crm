@@ -301,6 +301,14 @@
     </div>
 
     <!-- ===== PESSOAS RELACIONADAS ===== -->
+    <!-- ===== CHECKLIST DE DOCUMENTOS ===== -->
+    <div class="card" id="secaoChecklist">
+      <h2 style="margin-top:0;">Checklist de documentos</h2>
+      <p class="hint" style="margin-top:0;">Marque o que já foi recebido do cliente. O que falta aparece em destaque.</p>
+      <div id="listaChecklist"></div>
+      <div class="hint" id="resumoChecklist" style="margin-top:8px;"></div>
+    </div>
+
     <!-- ===== BOLETOS DE QUITAÇÃO ===== -->
     <div class="card" id="secaoBoletos">
       <h2 style="margin-top:0;">Boletos de quitação</h2>
@@ -412,11 +420,27 @@
       window.open(`https://wa.me/55${d}?text=${encodeURIComponent(textoModelo())}`, "_blank", "noopener");
       return false;
     }
+    let ALERTAS_TEL = {};
+    function avisoTel(d) {
+      const a = ALERTAS_TEL[d];
+      if (!a) return "";
+      let t = "";
+      if (a.errado) t += ` <span title="Esse número já foi marcado como errado em outro cliente" style="background:#7a1f1f; color:#fff; padding:2px 8px; border-radius:10px; font-size:11px; margin-left:6px;">🚫 número já marcado como errado</span>`;
+      if (a.outros > 0) t += ` <span title="O mesmo número aparece em outros clientes" style="background:#7a5a10; color:#fff; padding:2px 8px; border-radius:10px; font-size:11px; margin-left:6px;">⚠ repetido em ${a.outros} cliente(s)</span>`;
+      return t;
+    }
+    async function carregarAlertasTel() {
+      const tels = (LEAD.telefones || []).map((t) => String(t).replace(/\D/g, "")).filter(Boolean);
+      if (tels.length === 0) return;
+      const { data } = await supabaseClient.rpc("checar_telefones", { p_telefones: tels, p_lead_id: LEAD.id });
+      ALERTAS_TEL = {};
+      (data || []).forEach((r) => { if (r.outros > 0 || r.errado) ALERTAS_TEL[r.telefone] = r; });
+    }
     function linkTelefone(tel) {
       const d = String(tel || "").replace(/\D/g, "");
       const ehCelular = d.length === 11 && d[2] === "9";
-      if (!ehCelular) return d || "-";
-      return `${d} <a href="#" onclick="return abrirWhats('${d}')" style="background:#25D366; color:#fff; text-decoration:none; padding:2px 8px; border-radius:10px; font-size:11px; margin-left:6px;">WhatsApp</a>`;
+      if (!ehCelular) return (d || "-") + avisoTel(d);
+      return `${d}${avisoTel(d)} <a href="#" onclick="return abrirWhats('${d}')" style="background:#25D366; color:#fff; text-decoration:none; padding:2px 8px; border-radius:10px; font-size:11px; margin-left:6px;">WhatsApp</a>`;
     }
 
     const params = new URLSearchParams(window.location.search);
@@ -591,6 +615,7 @@
       if (error || !data) { alert("Cliente não encontrado ou você não tem acesso a ele."); window.location.href = "consultor.html"; return; }
       LEAD = data;
       await carregarModelos();
+      await carregarAlertasTel();
 
       document.getElementById("nomeCliente").textContent = LEAD.nome || "(sem nome)";
       document.getElementById("statusBadge").className = "badge " + LEAD.status;
@@ -629,6 +654,7 @@
       await carregarRelacionadas();
       carregarHistorico();
       carregarBoletos();
+      carregarChecklist();
       recalcular();
       await iniciarContato();
     }
@@ -829,6 +855,41 @@
     });
 
 
+
+
+    // ---------- Checklist de documentos ----------
+    let CHECK_ITENS = [];
+    let CHECK_ESTADO = {};
+    async function carregarChecklist() {
+      const { data: cfg } = await supabaseClient.rpc("obter_configuracao", { p_chave: "checklist_itens" });
+      CHECK_ITENS = String(cfg || "").split("\n").map((t) => t.trim()).filter(Boolean);
+      const { data } = await supabaseClient.from("lead_checklist").select("*").eq("lead_id", LEAD.id);
+      CHECK_ESTADO = {};
+      (data || []).forEach((r) => { CHECK_ESTADO[r.item] = r.recebido; });
+      renderChecklist();
+    }
+    function renderChecklist() {
+      const box = document.getElementById("listaChecklist");
+      if (CHECK_ITENS.length === 0) { box.innerHTML = `<p class="hint">Nenhum item configurado pelo administrador.</p>`; return; }
+      box.innerHTML = CHECK_ITENS.map((it, i) => `
+        <label style="display:flex; align-items:center; gap:10px; margin:8px 0; font-size:15px; ${CHECK_ESTADO[it] ? "color:var(--success);" : ""}">
+          <input type="checkbox" data-i="${i}" ${CHECK_ESTADO[it] ? "checked" : ""} style="width:18px; height:18px;" onchange="marcarChecklist(${i}, this.checked)">
+          ${it}
+        </label>`).join("");
+      const faltam = CHECK_ITENS.filter((it) => !CHECK_ESTADO[it]);
+      const r = document.getElementById("resumoChecklist");
+      r.style.color = faltam.length ? "var(--gold-soft)" : "var(--success)";
+      r.textContent = faltam.length ? `Falta: ${faltam.join(", ")}.` : "Todos os documentos foram recebidos. ✅";
+    }
+    async function marcarChecklist(i, valor) {
+      const item = CHECK_ITENS[i];
+      const { error } = await supabaseClient.from("lead_checklist").upsert(
+        { lead_id: LEAD.id, item, recebido: valor, atualizado_em: new Date().toISOString(), atualizado_por: PERFIL.id },
+        { onConflict: "lead_id,item" });
+      if (error) { alert("Erro ao salvar: " + error.message); return; }
+      CHECK_ESTADO[item] = valor;
+      renderChecklist();
+    }
 
     // ---------- Boletos de quitação ----------
     const FORMA_BOLETO = { bacen: "Bacen", consumidor: "Consumidor", procuracao: "Procuração", contato_interno: "Contato interno" };
@@ -1039,7 +1100,7 @@
 
     // ---------- Contato: SIMULAR ou TABULAR (não sai da tela sem tabular) ----------
     let TAB_PENDENTE = false;
-    const SEC_FLUXO = ["secaoSimular", "secaoCadastro", "secaoDocumentos", "secaoFinalizar", "secaoBoletos", "secaoRelacionadas"];
+    const SEC_FLUXO = ["secaoSimular", "secaoCadastro", "secaoDocumentos", "secaoFinalizar", "secaoChecklist", "secaoBoletos", "secaoRelacionadas"];
     function mostrarFluxo(mostrar) { SEC_FLUXO.forEach((id) => { const el = document.getElementById(id); if (el) el.style.display = mostrar ? "" : "none"; }); }
 
     async function verificarTabulacaoPendente() {
@@ -1188,6 +1249,8 @@
       const auth = await exigirLogin("consultor");
       if (!auth) return;
       PERFIL = auth.profile;
+      iniciarLembretes(PERFIL);
+      entrarPresenca(PERFIL);
       document.getElementById("whoami").textContent = PERFIL.nome;
       await carregarCoeficientes();
       popularSelectsSimulacao();
