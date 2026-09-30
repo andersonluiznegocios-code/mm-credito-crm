@@ -19,10 +19,16 @@
   <div class="app-shell">
     <div class="sidebar">
       <div class="sidebar-item ativo" data-pagina="visao-geral" onclick="mudarPagina('visao-geral')">📊 Visão geral</div>
+      <div class="sidebar-item" data-pagina="painel-dia" onclick="mudarPagina('painel-dia')">🏠 Painel do dia</div>
       <div class="sidebar-item" data-pagina="funil" onclick="mudarPagina('funil')">📈 Funil</div>
       <div class="sidebar-item" data-pagina="horarios" onclick="mudarPagina('horarios')">⏱ Horários</div>
       <div class="sidebar-item" data-pagina="boletos" onclick="mudarPagina('boletos')">🧾 Boletos</div>
       <div class="sidebar-item" data-pagina="reativacao" onclick="mudarPagina('reativacao')">♻ Reativação</div>
+      <div class="sidebar-item" data-pagina="previsao" onclick="mudarPagina('previsao')">💰 Previsão</div>
+      <div class="sidebar-item" data-pagina="cancelamentos" onclick="mudarPagina('cancelamentos')">❌ Cancelamentos</div>
+      <div class="sidebar-item" data-pagina="qualidade" onclick="mudarPagina('qualidade')">⭐ Qualidade</div>
+      <div class="sidebar-item" data-pagina="roteiros" onclick="mudarPagina('roteiros')">📚 Roteiros</div>
+      <div class="sidebar-item" data-pagina="acessos" onclick="mudarPagina('acessos')">🔐 Acessos</div>
       <div class="sidebar-item" data-pagina="mensagens" onclick="mudarPagina('mensagens')">💬 Mensagens</div>
       <div class="sidebar-item" data-pagina="clientes" onclick="mudarPagina('clientes')">👥 Clientes</div>
       <div class="sidebar-item" data-pagina="contratos" onclick="mudarPagina('contratos')">📄 Contratos</div>
@@ -243,6 +249,119 @@
             </table></div></div>
         </div>
 
+        <!-- ===== PÁGINA: PAINEL DO DIA ===== -->
+        <div class="page-panel" id="page-painel-dia">
+          <h1>Painel do dia</h1>
+          <p class="subtitle">Tudo o que importa hoje, em uma tela.</p>
+          <div class="grid-stats" id="painelStats"></div>
+          <div class="card">
+            <h2 style="margin-top:0;">🟢 Quem está online</h2>
+            <div id="painelOnline" class="hint">Carregando...</div>
+          </div>
+          <div class="card">
+            <h2 style="margin-top:0;">🎯 Metas do dia por operador</h2>
+            <div class="table-wrap"><table>
+              <thead><tr><th>Operador</th><th>Atendimentos</th><th>Simulações</th><th>Vendas</th></tr></thead>
+              <tbody id="tbodyPainelOperadores"></tbody>
+            </table></div>
+          </div>
+        </div>
+
+        <!-- ===== PÁGINA: PREVISÃO ===== -->
+        <div class="page-panel" id="page-previsao">
+          <h1>Previsão de receita</h1>
+          <p class="subtitle">Estimativa do que deve ser pago, a partir dos contratos em andamento. Cada etapa da esteira tem um prazo médio e uma chance de pagamento, que você ajusta abaixo.</p>
+          <div class="grid-stats" id="previsaoStats"></div>
+          <div class="card">
+            <h2 style="margin-top:0;">Regras por etapa da esteira</h2>
+            <p class="hint" style="margin-top:0;">Previsão = produção × chance, pela data da última atualização do contrato + prazo da etapa. Etapas sem regra usam 15 dias e 50%. Contratos cancelados ou já pagos ficam de fora.</p>
+            <div class="table-wrap"><table>
+              <thead><tr><th>Etapa da esteira</th><th>Contratos</th><th>Produção</th><th>Dias até pagar</th><th>Chance de pagar (%)</th><th></th></tr></thead>
+              <tbody id="tbodyPrevisao"></tbody>
+            </table></div>
+            <div class="hint" id="previsaoMsg"></div>
+          </div>
+          <div class="card">
+            <h2 style="margin-top:0;">🧾 Boletos de quitação pendentes</h2>
+            <div id="previsaoBoletos" class="hint"></div>
+          </div>
+        </div>
+
+        <!-- ===== PÁGINA: CANCELAMENTOS ===== -->
+        <div class="page-panel" id="page-cancelamentos">
+          <h1>Cancelamentos</h1>
+          <p class="subtitle">Onde os contratos mais cancelam: por operador, por banco e por convênio. Linhas em vermelho estão bem acima da média.</p>
+          <div class="card">
+            <div class="field" style="max-width:260px;"><label>Contratos iniciados</label>
+              <select id="canPeriodo"><option value="30">Últimos 30 dias</option><option value="90" selected>Últimos 90 dias</option><option value="180">Últimos 180 dias</option><option value="0">Todo o período</option></select></div>
+            <button class="btn" id="btnCancelamentos">Atualizar</button>
+            <span class="hint" id="canResumo"></span>
+            <div class="error-msg" id="erroCancelamentos"></div>
+          </div>
+          <div class="card"><h2 style="margin-top:0;">Por operador</h2><div class="table-wrap" id="canOperador"></div></div>
+          <div class="card"><h2 style="margin-top:0;">Por banco</h2><div class="table-wrap" id="canBanco"></div></div>
+          <div class="card"><h2 style="margin-top:0;">Por convênio</h2><div class="table-wrap" id="canConvenio"></div></div>
+        </div>
+
+        <!-- ===== PÁGINA: QUALIDADE ===== -->
+        <div class="page-panel" id="page-qualidade">
+          <h1>Avaliação de qualidade</h1>
+          <p class="subtitle">Avalie atendimentos por amostragem. O operador vê a nota e a observação no painel dele.</p>
+          <div class="card">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px;">
+              <div class="field"><label>Operador</label><select id="qualOperador"></select></div>
+              <div class="field"><label>Nota (0 a 10)</label><input type="number" min="0" max="10" step="1" id="qualNota"></div>
+              <div class="field"><label>Link da gravação (opcional)</label><input type="text" id="qualLink" placeholder="https://..."></div>
+            </div>
+            <div style="margin:6px 0 10px;">
+              <label style="margin-right:14px;"><input type="checkbox" class="qual-crit" value="Saudação e identificação"> Saudação e identificação</label>
+              <label style="margin-right:14px;"><input type="checkbox" class="qual-crit" value="Oferta clara"> Oferta clara</label>
+              <label style="margin-right:14px;"><input type="checkbox" class="qual-crit" value="Tratou objeções"> Tratou objeções</label>
+              <label style="margin-right:14px;"><input type="checkbox" class="qual-crit" value="Fechamento"> Fechamento</label>
+              <label style="margin-right:14px;"><input type="checkbox" class="qual-crit" value="Cordialidade"> Cordialidade</label>
+            </div>
+            <div class="field"><label>Observação para o operador</label><textarea id="qualObs" rows="2"></textarea></div>
+            <button class="btn" id="btnSalvarAvaliacao">Salvar avaliação</button>
+            <div class="error-msg" id="erroQualidade"></div>
+          </div>
+          <div class="card"><h2 style="margin-top:0;">Média por operador</h2><div class="table-wrap"><table><thead><tr><th>Operador</th><th>Avaliações</th><th>Média</th></tr></thead><tbody id="tbodyQualMedia"></tbody></table></div></div>
+          <div class="card"><h2 style="margin-top:0;">Últimas avaliações</h2><div class="table-wrap"><table><thead><tr><th>Data</th><th>Operador</th><th>Nota</th><th>Critérios atendidos</th><th>Observação</th><th>Gravação</th></tr></thead><tbody id="tbodyQualidade"></tbody></table></div></div>
+        </div>
+
+        <!-- ===== PÁGINA: ROTEIROS (ADM) ===== -->
+        <div class="page-panel" id="page-roteiros">
+          <h1>Roteiros operacionais</h1>
+          <p class="subtitle">Anexe o PDF do roteiro de cada convênio. Os operadores acessam pela aba "Roteiros" do login deles.</p>
+          <div class="card">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px;">
+              <div class="field"><label>Convênio</label><select id="rotConvenio"></select></div>
+              <div class="field"><label>Título do roteiro</label><input type="text" id="rotTitulo" placeholder="Ex: Roteiro de abordagem — Gov SP"></div>
+              <div class="field"><label>Arquivo PDF</label><input type="file" id="rotArquivo" accept="application/pdf,.pdf"></div>
+            </div>
+            <button class="btn" id="btnEnviarRoteiro">Enviar roteiro</button>
+            <div class="error-msg" id="erroRoteiro"></div>
+          </div>
+          <div class="card"><div class="table-wrap"><table>
+            <thead><tr><th>Convênio</th><th>Título</th><th>Atualizado em</th><th></th></tr></thead>
+            <tbody id="tbodyRoteirosAdm"></tbody></table></div></div>
+        </div>
+
+        <!-- ===== PÁGINA: ACESSOS ===== -->
+        <div class="page-panel" id="page-acessos">
+          <h1>Registro de acessos</h1>
+          <p class="subtitle">Quem entrou no sistema, de onde (IP) e a que horas, e as exportações de dados. Exportações grandes aparecem em destaque.</p>
+          <div class="card">
+            <div class="field" style="max-width:260px;"><label>Evento</label>
+              <select id="acFiltro"><option value="">Todos</option><option value="login">Entradas</option><option value="exportacao">Exportações</option></select></div>
+            <button class="btn" id="btnAcessos">Atualizar</button>
+            <div class="error-msg" id="erroAcessos"></div>
+          </div>
+          <div class="card" id="cardAlertaExport" style="display:none; border:1px solid var(--danger);"><strong style="color:var(--danger);">⚠ Exportações grandes nos últimos 7 dias</strong><div id="alertaExport"></div></div>
+          <div class="card"><div class="table-wrap"><table>
+            <thead><tr><th>Data/hora</th><th>Usuário</th><th>Evento</th><th>IP</th><th>Detalhe</th></tr></thead>
+            <tbody id="tbodyAcessos"></tbody></table></div></div>
+        </div>
+
         <!-- ===== PÁGINA: MENSAGENS ===== -->
         <div class="page-panel" id="page-mensagens">
           <h1>Modelos de mensagem (WhatsApp)</h1>
@@ -252,6 +371,13 @@
             <div class="field"><label>Texto</label><textarea id="msgTexto" rows="3" placeholder="Olá, {nome}! Aqui é {operador} da MM Crédito..."></textarea></div>
             <button class="btn" id="btnSalvarMensagem">Adicionar modelo</button>
             <div class="error-msg" id="erroMensagens"></div>
+          </div>
+          <div class="card">
+            <h2 style="margin-top:0;">Checklist de documentos</h2>
+            <p class="hint" style="margin-top:0;">Itens que o operador marca como recebidos na tela do cliente. Um item por linha.</p>
+            <textarea id="cfgChecklist" rows="5" style="width:100%;"></textarea>
+            <button class="btn secondary" id="btnSalvarChecklist" style="margin-top:8px;">Salvar checklist</button>
+            <span class="hint" id="cfgChecklistMsg"></span>
           </div>
           <div class="card"><div class="table-wrap">
             <table>
@@ -399,6 +525,19 @@
     </div>
   </div>
 
+  <div class="modal-overlay hidden" id="senhaOverlay">
+    <div class="modal">
+      <h3>Confirmação de segurança</h3>
+      <p class="hint" id="senhaMotivo" style="margin-top:0;"></p>
+      <div class="field"><label>Digite sua senha para continuar</label><input type="password" id="senhaConfirma" autocomplete="current-password"></div>
+      <div class="error-msg" id="senhaErro"></div>
+      <div style="display:flex; gap:10px;">
+        <button class="btn" id="btnSenhaOk">Confirmar</button>
+        <button class="btn secondary" id="btnSenhaCancelar">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay hidden" id="histOverlay">
     <div class="modal" style="max-width:760px;">
       <button class="modal-close" onclick="document.getElementById('histOverlay').classList.add('hidden')">&times;</button>
@@ -444,8 +583,14 @@
       if (nome === "horarios") carregarHorarios();
       if (nome === "boletos") carregarBoletosAdmin();
       if (nome === "reativacao") buscarReativacao();
-      if (nome === "mensagens") carregarMensagens();
+      if (nome === "mensagens") { carregarMensagens(); carregarChecklistCfg(); }
       if (nome === "backup") carregarBackups();
+      if (nome === "painel-dia") carregarPainelDia();
+      if (nome === "previsao") carregarPrevisao();
+      if (nome === "cancelamentos") carregarCancelamentos();
+      if (nome === "qualidade") carregarQualidade();
+      if (nome === "roteiros") carregarRoteirosAdm();
+      if (nome === "acessos") carregarAcessos();
       if (nome === "sorteios") carregarDiasRetorno();
     }
 
@@ -731,6 +876,277 @@
       }
       return { data: todos };
     }
+
+
+    // ---------- Confirmação de segurança (senha) antes de exportar ----------
+    let EMAIL_ADMIN = "";
+    function confirmarSensivel(motivo) {
+      return new Promise((resolve) => {
+        const ov = document.getElementById("senhaOverlay");
+        const inp = document.getElementById("senhaConfirma"), err = document.getElementById("senhaErro");
+        document.getElementById("senhaMotivo").textContent = motivo;
+        inp.value = ""; err.textContent = "";
+        ov.classList.remove("hidden"); inp.focus();
+        const fechar = (ok) => { ov.classList.add("hidden"); btnOk.onclick = null; btnCan.onclick = null; inp.onkeydown = null; resolve(ok); };
+        const btnOk = document.getElementById("btnSenhaOk"), btnCan = document.getElementById("btnSenhaCancelar");
+        const tentar = async () => {
+          btnOk.disabled = true;
+          const { error } = await supabaseClient.auth.signInWithPassword({ email: EMAIL_ADMIN, password: inp.value });
+          btnOk.disabled = false;
+          if (error) { err.textContent = "Senha incorreta."; return; }
+          fechar(true);
+        };
+        btnOk.onclick = tentar; btnCan.onclick = () => fechar(false);
+        inp.onkeydown = (e) => { if (e.key === "Enter") tentar(); };
+      });
+    }
+    // proteção: pede a senha antes das exportações sensíveis
+    [["btnExportarTudo", "Exportar a base completa (clientes, tabulações, propostas…)"], ["btnExportarClientes", "Exportar a lista de clientes"], ["btnExportarReativacao", "Exportar o mailing de reativação"]].forEach(([id, motivo]) => {
+      document.getElementById(id).addEventListener("click", async (e) => {
+        if (e.target.dataset.liberado === "1") { e.target.dataset.liberado = ""; return; }
+        e.stopImmediatePropagation();
+        if (await confirmarSensivel(motivo)) { e.target.dataset.liberado = "1"; registrarEvento("exportacao", { tipo: id.replace("btnExportar", "").toLowerCase() }); e.target.click(); }
+      }, true);
+    });
+
+    // ---------- Contratos completos (sem o limite de 1.000) ----------
+    let CONTRATOS_ALL = null;
+    async function garantirContratos() {
+      if (CONTRATOS_ALL) return CONTRATOS_ALL;
+      const { data } = await buscarTudo("contratos_credbase", "*, profiles(nome)");
+      CONTRATOS_ALL = data || [];
+      return CONTRATOS_ALL;
+    }
+
+    // ---------- Painel do dia ----------
+    function inicioDoDia() { const d = new Date(); d.setHours(0, 0, 0, 0); return d.toISOString(); }
+    async function carregarPainelDia() {
+      const ini = inicioDoDia();
+      const hoje = new Date().toISOString().slice(0, 10);
+      const [rank, vendas, boletos] = await Promise.all([
+        supabaseClient.rpc("ranking_dia", { p_ini: ini }),
+        supabaseClient.from("propostas").select("valor_contrato").gte("criado_em", ini),
+        supabaseClient.from("boletos_quitacao").select("id", { count: "exact", head: true }).eq("status", "pendente").lt("vencimento", hoje),
+      ]);
+      const op = rank.data || [];
+      const totAt = op.reduce((t, o) => t + Number(o.atendimentos), 0), totSim = op.reduce((t, o) => t + Number(o.simulacoes), 0);
+      const metaAt = CONSULTORES.reduce((t, c) => t + (c.meta_dia_atendimentos || 0), 0), metaSim = CONSULTORES.reduce((t, c) => t + (c.meta_dia_simulacoes || 0), 0);
+      const valorVendas = (vendas.data || []).reduce((t, p) => t + Number(p.valor_contrato || 0), 0);
+      const agora = Date.now();
+      const ultima = {}; (TABS_EM_ANDAMENTO || []).forEach((t) => { if (!ultima[t.lead_id]) ultima[t.lead_id] = t.criado_em; });
+      const sort = {}; (SORTEIOS_EM_ANDAMENTO || []).forEach((s) => { sort[s.lead_id] = s.sorteado_em; });
+      const parados = LEADS.filter((l) => l.status === "em_andamento").filter((l) => { const u = ultima[l.id] || sort[l.id]; return u && (agora - new Date(u)) / 86400000 >= 3; }).length;
+      const card = (n, rot, cor) => `<div class="stat"><div class="num" style="${cor ? "color:" + cor : ""}">${n}</div><div class="label">${rot}</div></div>`;
+      document.getElementById("painelStats").innerHTML =
+        card((vendas.data || []).length, `Vendas hoje (${formatBRL(valorVendas)})`) +
+        card(`${totAt}${metaAt ? " / " + metaAt : ""}`, "Atendimentos (meta do dia)") +
+        card(`${totSim}${metaSim ? " / " + metaSim : ""}`, "Simulações (meta do dia)") +
+        card(boletos.count || 0, "Boletos atrasados", (boletos.count || 0) > 0 ? "var(--danger)" : "") +
+        card(parados, "Clientes parados há 3+ dias", parados > 0 ? "var(--danger)" : "");
+      document.getElementById("tbodyPainelOperadores").innerHTML = op.map((o) => {
+        const c = CONSULTORES.find((x) => x.id === o.consultor_id) || {};
+        const b = (v, m) => (m > 0 ? `${v} / ${m}${v >= m ? " ✅" : ""}` : String(v));
+        return `<tr><td>${o.nome}</td><td>${b(Number(o.atendimentos), c.meta_dia_atendimentos || 0)}</td><td>${b(Number(o.simulacoes), c.meta_dia_simulacoes || 0)}</td><td>${o.vendas}</td></tr>`;
+      }).join("") || `<tr><td colspan="4" style="color:var(--muted);">Sem dados.</td></tr>`;
+    }
+    function mostrarOnline(estado) {
+      const nomes = Object.values(estado || {}).map((arr) => arr[0] && arr[0].nome).filter(Boolean);
+      const box = document.getElementById("painelOnline");
+      if (!box) return;
+      const todos = CONSULTORES.map((c) => c.nome);
+      const off = todos.filter((n) => !nomes.includes(n));
+      box.innerHTML = nomes.length
+        ? `<div style="font-size:15px; color:var(--success);">${nomes.sort().map((n) => "🟢 " + n).join(" &nbsp; ")}</div><div class="hint" style="margin-top:6px;">Offline: ${off.join(", ") || "ninguém"}</div>`
+        : `Ninguém online agora. Offline: ${todos.join(", ") || "-"}`;
+    }
+
+    // ---------- Previsão de receita ----------
+    let PREV_CFG = {};
+    async function carregarPrevisao() {
+      const contratos = await garantirContratos();
+      const { data: cfg } = await supabaseClient.from("previsao_esteiras").select("*");
+      PREV_CFG = {}; (cfg || []).forEach((c) => { PREV_CFG[c.esteira] = c; });
+      const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+      const abertos = contratos.filter((c) => contratoConta(c) && !/pag/i.test(`${c.esteira || ""} ${c.situacao || ""}`));
+      const porEsteira = {};
+      let p7 = 0, p30 = 0, bruto = 0;
+      abertos.forEach((c) => {
+        const nome = c.esteira || "(sem etapa)";
+        const cf = PREV_CFG[nome] || { dias: 15, probabilidade: 50 };
+        const base = c.atualizado_em ? new Date(c.atualizado_em) : new Date();
+        const prev = new Date(base.getFullYear(), base.getMonth(), base.getDate() + cf.dias);
+        const quando = prev < hoje ? hoje : prev;
+        const dias = Math.round((quando - hoje) / 86400000);
+        const v = Number(c.producao || 0) * (cf.probabilidade / 100);
+        if (dias <= 7) p7 += v;
+        if (dias <= 30) p30 += v;
+        bruto += Number(c.producao || 0);
+        const e = (porEsteira[nome] = porEsteira[nome] || { n: 0, prod: 0 });
+        e.n++; e.prod += Number(c.producao || 0);
+      });
+      document.getElementById("previsaoStats").innerHTML =
+        `<div class="stat"><div class="num">${formatBRL(p7)}</div><div class="label">Previsto para os próximos 7 dias</div></div>
+         <div class="stat"><div class="num">${formatBRL(p30)}</div><div class="label">Previsto para os próximos 30 dias</div></div>
+         <div class="stat"><div class="num">${abertos.length}</div><div class="label">Contratos em andamento</div></div>
+         <div class="stat"><div class="num">${formatBRL(bruto)}</div><div class="label">Produção em andamento (bruto)</div></div>`;
+      document.getElementById("tbodyPrevisao").innerHTML = Object.entries(porEsteira).sort((x, y) => y[1].prod - x[1].prod).map(([nome, e], i) => {
+        const cf = PREV_CFG[nome] || { dias: 15, probabilidade: 50 };
+        return `<tr><td>${nome}</td><td>${e.n}</td><td>${formatBRL(e.prod)}</td>
+          <td><input type="number" min="0" id="pvd_${i}" value="${cf.dias}" style="width:80px;"></td>
+          <td><input type="number" min="0" max="100" id="pvp_${i}" value="${cf.probabilidade}" style="width:80px;"></td>
+          <td><button class="btn secondary" style="padding:4px 10px; font-size:12px;" data-etapa="${String(nome).replace(/"/g, "&quot;")}" data-i="${i}" onclick="salvarPrevisao(this)">Salvar</button></td></tr>`;
+      }).join("") || `<tr><td colspan="6" style="color:var(--muted);">Nenhum contrato em andamento. Importe a planilha do CredBase na página Contratos.</td></tr>`;
+      const hj = new Date().toISOString().slice(0, 10), em7 = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+      const { data: bol } = await supabaseClient.from("boletos_quitacao").select("vencimento").eq("status", "pendente");
+      const b = bol || [];
+      document.getElementById("previsaoBoletos").innerHTML = `<b>${b.length}</b> pendente(s): <b style="color:var(--danger)">${b.filter((x) => x.vencimento < hj).length}</b> atrasado(s), <b>${b.filter((x) => x.vencimento >= hj && x.vencimento <= em7).length}</b> vencendo em 7 dias. Boletos em dia ajudam os contratos a avançar na esteira e entrar na previsão.`;
+    }
+    async function salvarPrevisao(btn) {
+      const i = btn.dataset.i, msg = document.getElementById("previsaoMsg");
+      const dias = parseInt(document.getElementById(`pvd_${i}`).value, 10), prob = parseInt(document.getElementById(`pvp_${i}`).value, 10);
+      if (Number.isNaN(dias) || Number.isNaN(prob) || dias < 0 || prob < 0 || prob > 100) { msg.style.color = "var(--danger)"; msg.textContent = "Informe dias (0 ou mais) e chance entre 0 e 100."; return; }
+      const { error } = await supabaseClient.from("previsao_esteiras").upsert({ esteira: btn.dataset.etapa, dias, probabilidade: prob }, { onConflict: "esteira" });
+      msg.style.color = error ? "var(--danger)" : "var(--success)";
+      msg.textContent = error ? "Erro: " + error.message : "Regra salva.";
+      if (!error) carregarPrevisao();
+    }
+
+    // ---------- Cancelamentos ----------
+    async function carregarCancelamentos() {
+      const erroEl = document.getElementById("erroCancelamentos"); erroEl.textContent = "";
+      const contratos = await garantirContratos();
+      const dias = parseInt(document.getElementById("canPeriodo").value, 10);
+      const corte = dias ? new Date(Date.now() - dias * 86400000).toISOString().slice(0, 10) : null;
+      const lista = contratos.filter((c) => !corte || (c.data_inicio && c.data_inicio >= corte));
+      const agrupar = (chave) => {
+        const g = {};
+        lista.forEach((c) => {
+          const k = chave(c) || "(não informado)";
+          const e = (g[k] = g[k] || { n: 0, canc: 0, valor: 0 });
+          e.n++; if (!contratoConta(c)) { e.canc++; e.valor += Number(c.producao || 0); }
+        });
+        return g;
+      };
+      const totCanc = lista.filter((c) => !contratoConta(c)).length;
+      const mediaGeral = lista.length ? totCanc / lista.length : 0;
+      document.getElementById("canResumo").textContent = ` ${lista.length} contrato(s) · ${totCanc} cancelado(s) · média geral ${(mediaGeral * 100).toFixed(1)}%`;
+      const tabela = (g) => {
+        const linhas = Object.entries(g).sort((x, y) => y[1].canc - x[1].canc);
+        return `<table><thead><tr><th>Nome</th><th>Contratos</th><th>Cancelados</th><th>% cancelado</th><th>Produção cancelada</th></tr></thead><tbody>` +
+          linhas.map(([k, e]) => { const p = e.n ? e.canc / e.n : 0; const ruim = e.n >= 5 && p > mediaGeral * 1.25 && p > 0;
+            return `<tr style="${ruim ? "color:var(--danger); font-weight:bold;" : ""}"><td>${k}</td><td>${e.n}</td><td>${e.canc}</td><td>${(p * 100).toFixed(1)}%${ruim ? " ⚠" : ""}</td><td>${formatBRL(e.valor)}</td></tr>`; }).join("") + `</tbody></table>`;
+      };
+      document.getElementById("canOperador").innerHTML = tabela(agrupar((c) => (c.profiles && c.profiles.nome) || c.vendedor_nome));
+      document.getElementById("canBanco").innerHTML = tabela(agrupar((c) => c.banco));
+      document.getElementById("canConvenio").innerHTML = tabela(agrupar((c) => c.convenio));
+    }
+    document.getElementById("btnCancelamentos").addEventListener("click", carregarCancelamentos);
+
+    // ---------- Qualidade ----------
+    async function carregarQualidade() {
+      const sel = document.getElementById("qualOperador");
+      if (sel.options.length === 0) sel.innerHTML = CONSULTORES.map((c) => `<option value="${c.id}">${c.nome}</option>`).join("");
+      const { data } = await supabaseClient.from("avaliacoes_qualidade").select("*, consultor:consultor_id(nome)").order("criado_em", { ascending: false }).limit(200);
+      const lista = data || [];
+      const med = {};
+      lista.forEach((a) => { const n = a.consultor ? a.consultor.nome : "-"; (med[n] = med[n] || []).push(a.nota); });
+      document.getElementById("tbodyQualMedia").innerHTML = Object.entries(med).map(([n, v]) => `<tr><td>${n}</td><td>${v.length}</td><td><strong>${(v.reduce((t, x) => t + x, 0) / v.length).toFixed(1)}</strong></td></tr>`).join("") || `<tr><td colspan="3" style="color:var(--muted);">Sem avaliações.</td></tr>`;
+      document.getElementById("tbodyQualidade").innerHTML = lista.slice(0, 50).map((a) => {
+        const crit = Object.keys(a.criterios || {}).filter((k) => a.criterios[k]);
+        return `<tr><td>${new Date(a.criado_em).toLocaleDateString("pt-BR")}</td><td>${a.consultor ? a.consultor.nome : "-"}</td><td><strong>${a.nota}</strong></td><td>${crit.join(", ") || "-"}</td><td>${a.observacao || "-"}</td><td>${a.link_gravacao ? `<a href="${a.link_gravacao}" target="_blank" rel="noopener" style="color:var(--gold-soft);">Ouvir</a>` : "-"}</td></tr>`;
+      }).join("");
+    }
+    document.getElementById("btnSalvarAvaliacao").addEventListener("click", async () => {
+      const erroEl = document.getElementById("erroQualidade"); erroEl.style.color = ""; erroEl.textContent = "";
+      const nota = parseInt(document.getElementById("qualNota").value, 10);
+      if (Number.isNaN(nota) || nota < 0 || nota > 10) { erroEl.textContent = "Informe a nota de 0 a 10."; return; }
+      const criterios = {}; document.querySelectorAll(".qual-crit").forEach((c) => { criterios[c.value] = c.checked; });
+      const { error } = await supabaseClient.from("avaliacoes_qualidade").insert({
+        consultor_id: document.getElementById("qualOperador").value, nota, criterios,
+        observacao: document.getElementById("qualObs").value.trim() || null, link_gravacao: document.getElementById("qualLink").value.trim() || null, avaliador_id: PERFIL.id,
+      });
+      if (error) { erroEl.textContent = "Erro: " + error.message; return; }
+      ["qualNota", "qualObs", "qualLink"].forEach((i) => { document.getElementById(i).value = ""; });
+      document.querySelectorAll(".qual-crit").forEach((c) => { c.checked = false; });
+      erroEl.style.color = "var(--success)"; erroEl.textContent = "Avaliação salva.";
+      carregarQualidade();
+    });
+
+    // ---------- Roteiros (upload) ----------
+    async function carregarRoteirosAdm() {
+      const sel = document.getElementById("rotConvenio");
+      if (sel.options.length === 0) sel.innerHTML = `<option value="Geral">Geral (todos os convênios)</option>` + [...new Set(COEFICIENTES.map((c) => c.convenio))].sort().map((c) => `<option value="${c}">${c}</option>`).join("");
+      const { data } = await supabaseClient.from("roteiros").select("*").order("convenio").order("titulo");
+      document.getElementById("tbodyRoteirosAdm").innerHTML = (data || []).map((r) => `<tr><td>${r.convenio}</td><td>${r.titulo}</td><td>${new Date(r.atualizado_em).toLocaleDateString("pt-BR")}</td>
+        <td><button class="btn secondary" style="padding:4px 10px; font-size:12px;" onclick="verRoteiroAdm('${r.arquivo_path}')">Abrir</button>
+        <button class="btn secondary" style="padding:4px 10px; font-size:12px; color:var(--danger); border-color:var(--danger);" onclick="excluirRoteiro(${r.id}, '${r.arquivo_path}')">Excluir</button></td></tr>`).join("")
+        || `<tr><td colspan="4" style="color:var(--muted);">Nenhum roteiro enviado.</td></tr>`;
+    }
+    async function verRoteiroAdm(path) {
+      const { data, error } = await supabaseClient.storage.from("roteiros").createSignedUrl(path, 600);
+      if (error) { alert("Erro: " + error.message); return; }
+      window.open(data.signedUrl, "_blank");
+    }
+    async function excluirRoteiro(id, path) {
+      if (!confirm("Excluir este roteiro? Os operadores deixam de ver.")) return;
+      await supabaseClient.storage.from("roteiros").remove([path]);
+      const { error } = await supabaseClient.from("roteiros").delete().eq("id", id);
+      if (error) { alert("Erro: " + error.message); return; }
+      carregarRoteirosAdm();
+    }
+    document.getElementById("btnEnviarRoteiro").addEventListener("click", async () => {
+      const erroEl = document.getElementById("erroRoteiro"); erroEl.style.color = ""; erroEl.textContent = "";
+      const convenio = document.getElementById("rotConvenio").value, titulo = document.getElementById("rotTitulo").value.trim();
+      const arq = document.getElementById("rotArquivo").files[0];
+      if (!titulo) { erroEl.textContent = "Informe o título."; return; }
+      if (!arq) { erroEl.textContent = "Selecione o arquivo PDF."; return; }
+      if (!/\.pdf$/i.test(arq.name) || (arq.type && arq.type !== "application/pdf")) { erroEl.textContent = "O arquivo precisa ser um PDF."; return; }
+      if (arq.size > 25 * 1024 * 1024) { erroEl.textContent = "O PDF passa de 25 MB."; return; }
+      const slug = normalizarCabecalho(convenio).replace(/\s+/g, "-").toLowerCase() || "geral";
+      const nomeSeguro = arq.name.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Za-z0-9._-]+/g, "_");
+      const path = `${slug}/${Date.now()}-${nomeSeguro}`;
+      const btn = document.getElementById("btnEnviarRoteiro"); btn.disabled = true; btn.textContent = "Enviando...";
+      const { error: e1 } = await supabaseClient.storage.from("roteiros").upload(path, arq, { contentType: "application/pdf" });
+      if (e1) { erroEl.textContent = "Erro no envio: " + e1.message; btn.disabled = false; btn.textContent = "Enviar roteiro"; return; }
+      const { error: e2 } = await supabaseClient.from("roteiros").insert({ convenio, titulo, arquivo_path: path, enviado_por: PERFIL.id });
+      btn.disabled = false; btn.textContent = "Enviar roteiro";
+      if (e2) { erroEl.textContent = "Erro ao registrar: " + e2.message; return; }
+      document.getElementById("rotTitulo").value = ""; document.getElementById("rotArquivo").value = "";
+      erroEl.style.color = "var(--success)"; erroEl.textContent = "Roteiro enviado.";
+      carregarRoteirosAdm();
+    });
+
+    // ---------- Acessos ----------
+    async function carregarAcessos() {
+      const erroEl = document.getElementById("erroAcessos"); erroEl.textContent = "";
+      let q = supabaseClient.from("acessos_log").select("*, profiles(nome)").order("criado_em", { ascending: false }).limit(200);
+      const f = document.getElementById("acFiltro").value; if (f) q = q.eq("evento", f);
+      const { data, error } = await q;
+      if (error) { erroEl.textContent = "Erro: " + error.message; return; }
+      document.getElementById("tbodyAcessos").innerHTML = (data || []).map((l) => {
+        const d = l.detalhe || {};
+        const det = l.evento === "exportacao" ? `Exportou: ${d.tipo || "-"}${d.linhas ? " (" + d.linhas + " linhas)" : ""}` : (d.pagina ? `Página: ${d.pagina}` : "");
+        return `<tr><td>${new Date(l.criado_em).toLocaleString("pt-BR")}</td><td>${l.profiles ? l.profiles.nome : "-"}</td><td>${l.evento === "login" ? "Entrada" : l.evento === "exportacao" ? "Exportação" : l.evento}</td><td>${l.ip || "-"}</td><td>${det}</td></tr>`;
+      }).join("") || `<tr><td colspan="5" style="color:var(--muted);">Nenhum registro.</td></tr>`;
+      const sete = new Date(Date.now() - 7 * 86400000).toISOString();
+      const { data: ex } = await supabaseClient.from("acessos_log").select("*, profiles(nome)").eq("evento", "exportacao").gte("criado_em", sete).order("criado_em", { ascending: false });
+      const grandes = (ex || []);
+      document.getElementById("cardAlertaExport").style.display = grandes.length >= 3 ? "" : "none";
+      document.getElementById("alertaExport").innerHTML = grandes.length >= 3 ? `<p class="hint">${grandes.length} exportação(ões) em 7 dias. Confira se todas foram feitas por você.</p>` + grandes.slice(0, 5).map((l) => `<div>${new Date(l.criado_em).toLocaleString("pt-BR")} — ${l.profiles ? l.profiles.nome : "-"} — ${(l.detalhe || {}).tipo || ""}</div>`).join("") : "";
+    }
+    document.getElementById("btnAcessos").addEventListener("click", carregarAcessos);
+
+    // ---------- Checklist (config) ----------
+    async function carregarChecklistCfg() {
+      const { data } = await supabaseClient.rpc("obter_configuracao", { p_chave: "checklist_itens" });
+      document.getElementById("cfgChecklist").value = data || "";
+    }
+    document.getElementById("btnSalvarChecklist").addEventListener("click", async () => {
+      const msg = document.getElementById("cfgChecklistMsg");
+      const txt = document.getElementById("cfgChecklist").value.split("\n").map((t) => t.trim()).filter(Boolean).join("\n");
+      const { error } = await supabaseClient.rpc("salvar_configuracao", { p_chave: "checklist_itens", p_valor: txt });
+      msg.style.color = error ? "var(--danger)" : "var(--success)"; msg.textContent = error ? " Erro: " + error.message : " Salvo.";
+    });
 
     // ---------- Clientes (lista completa + mailing) ----------
     let CLI_LIMITE = 100;
@@ -1674,7 +2090,9 @@
       const auth = await exigirLogin("admin");
       if (!auth) return;
       PERFIL = auth.profile;
+      EMAIL_ADMIN = auth.session.user.email;
       document.getElementById("whoami").textContent = PERFIL.nome;
+      entrarPresenca(PERFIL, mostrarOnline);
       carregarTudo();
     })();
   </script>
