@@ -175,10 +175,11 @@
             <p class="hint" style="margin-top:0;">Usado no cálculo de simulação (valor da parcela ÷ coeficiente = valor de contrato). Atualize aqui sempre que a MK publicar tabela nova — não precisa mexer em código.</p>
             <div class="table-wrap">
               <table>
-                <thead><tr><th>Convênio</th><th>Tabela</th><th>Coeficiente</th><th></th></tr></thead>
+                <thead><tr><th><input type="checkbox" id="coefSelTodos" title="Selecionar todos"></th><th>Convênio</th><th>Tabela</th><th>Coeficiente</th><th></th></tr></thead>
                 <tbody id="tbodyCoeficientes"></tbody>
               </table>
             </div>
+            <button class="btn secondary" style="color:#ff6b6b; margin-top:10px;" onclick="excluirSelecionados()">Excluir selecionados</button>
             <div class="error-msg" id="erroCoeficientes"></div>
 
             <h2 style="margin-top:24px;">Adicionar novo convênio/tabela</h2>
@@ -352,11 +353,12 @@
     function renderCoeficientes() {
       const tbody = document.getElementById("tbodyCoeficientes");
       if (COEFICIENTES.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" style="color:var(--muted);">Nenhum coeficiente cadastrado.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" style="color:var(--muted);">Nenhum coeficiente cadastrado.</td></tr>`;
         return;
       }
       tbody.innerHTML = COEFICIENTES.map((c, i) => `
         <tr>
+          <td><input type="checkbox" class="coef-sel" data-i="${i}"></td>
           <td><input type="text" id="conv_${i}" value="${escAttr(c.convenio)}" style="width:150px;"></td>
           <td><input type="text" id="tab_${i}" value="${escAttr(c.tabela)}" style="width:200px;"></td>
           <td><input type="number" step="0.000000001" id="coef_${i}" value="${c.valor}" style="width:140px;"></td>
@@ -379,26 +381,54 @@
       if (!convenio || !tabela) { erroEl.textContent = "Convênio e tabela não podem ficar vazios."; return; }
       if (!novoValor || novoValor <= 0) { erroEl.textContent = "Valor inválido."; return; }
 
-      const { error } = await supabaseClient
+      const { data, error } = await supabaseClient
         .from("coeficientes")
         .update({ convenio, tabela, valor: novoValor, atualizado_em: new Date().toISOString() })
-        .eq("convenio", antigo.convenio).eq("tabela", antigo.tabela);
+        .eq("convenio", antigo.convenio).eq("tabela", antigo.tabela).select();
       if (error) { erroEl.textContent = "Erro ao salvar: " + error.message; return; }
+      if (!data || data.length === 0) { erroEl.textContent = "O banco não permitiu salvar (permissão de UPDATE em coeficientes)."; return; }
       erroEl.style.color = "var(--success)";
       erroEl.textContent = `${convenio} / ${tabela} atualizado.`;
       carregarTudo();
     }
 
-    async function excluirCoeficiente(i) {
+    async function apagarCoeficientes(lista) {
       const erroEl = document.getElementById("erroCoeficientes");
+      let apagados = 0;
+      for (const c of lista) {
+        const { data, error } = await supabaseClient.from("coeficientes").delete()
+          .eq("convenio", c.convenio).eq("tabela", c.tabela).select();
+        if (error) { erroEl.style.color = ""; erroEl.textContent = "Erro ao excluir: " + error.message; break; }
+        if (!data || data.length === 0) {
+          erroEl.style.color = "";
+          erroEl.textContent = "O banco não permitiu excluir (falta a permissão de DELETE na tabela coeficientes no Supabase). Nada foi apagado.";
+          break;
+        }
+        apagados++;
+      }
+      if (apagados > 0) {
+        erroEl.style.color = "var(--success)";
+        erroEl.textContent = `${apagados} coeficiente(s) excluído(s).`;
+      }
+      await carregarTudo();
+    }
+
+    async function excluirCoeficiente(i) {
       const c = COEFICIENTES[i];
       if (!confirm(`Excluir ${c.convenio} / ${c.tabela}?`)) return;
-      const { error } = await supabaseClient.from("coeficientes").delete().eq("convenio", c.convenio).eq("tabela", c.tabela);
-      if (error) { erroEl.style.color = ""; erroEl.textContent = "Erro ao excluir: " + error.message; return; }
-      erroEl.style.color = "var(--success)";
-      erroEl.textContent = `${c.convenio} / ${c.tabela} excluído.`;
-      carregarTudo();
+      await apagarCoeficientes([c]);
     }
+
+    async function excluirSelecionados() {
+      const marcados = [...document.querySelectorAll(".coef-sel:checked")].map((el) => COEFICIENTES[parseInt(el.dataset.i, 10)]);
+      if (marcados.length === 0) { alert("Marque pelo menos um coeficiente."); return; }
+      if (!confirm(`Excluir ${marcados.length} coeficiente(s) selecionado(s)?`)) return;
+      await apagarCoeficientes(marcados);
+    }
+
+    document.getElementById("coefSelTodos").addEventListener("change", (e) => {
+      document.querySelectorAll(".coef-sel").forEach((el) => { el.checked = e.target.checked; });
+    });
 
     document.getElementById("btnAdicionarCoeficiente").addEventListener("click", async () => {
       const erroEl = document.getElementById("erroCoeficientes");
