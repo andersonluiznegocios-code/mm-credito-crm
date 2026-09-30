@@ -37,7 +37,7 @@
   </div>
 
   <div class="container">
-    <a href="consultor.html" style="color:var(--gold-soft); text-decoration:none; font-size:13px;">&larr; Voltar para meus clientes</a>
+    <a href="consultor.html" id="linkVoltar" style="color:var(--gold-soft); text-decoration:none; font-size:13px;">&larr; Voltar para meus clientes</a>
 
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-top:14px;">
       <h1 style="margin:0;" id="nomeCliente">Carregando...</h1>
@@ -45,11 +45,37 @@
     </div>
     <p class="subtitle">Status: <span class="badge" id="statusBadge"></span></p>
     <div class="error-msg" id="sairErro"></div>
+    <div id="avisoPendente" class="hidden" style="background:#3a2a10; border:1px solid var(--gold-soft); color:var(--gold-soft); padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:12px;">⚠ Você precisa TABULAR este cliente (ou finalizar a venda) antes de sair desta tela.</div>
 
     <!-- ===== DADOS DA BASE ===== -->
     <div class="card">
       <h2 style="margin-top:0;">Dados da base</h2>
       <div class="lead-info" id="leadInfo"></div>
+    </div>
+
+    <!-- ===== CONTATO: SIMULAR OU TABULAR ===== -->
+    <div class="card" id="secaoContato" style="display:none;">
+      <h2 style="margin-top:0;">Contato com o cliente</h2>
+      <p class="hint" style="margin-top:0;">Conseguiu falar com o cliente? Escolha uma opção para continuar. Você só sai desta tela depois de tabular.</p>
+      <div style="display:flex; gap:12px; flex-wrap:wrap;">
+        <button class="btn" id="btnEscolherSimular">🧮 SIMULAR (consegui contato)</button>
+        <button class="btn secondary" id="btnEscolherTabular">📞 TABULAR (não localizei / sem contato)</button>
+      </div>
+      <div id="painelTabularRapido" class="hidden" style="margin-top:16px;">
+        <div class="field">
+          <label>Resultado</label>
+          <select id="resultadoRapido">
+            <option value="">Selecione...</option>
+            <option value="nao_atende">Não localizei / não atende (libera e volta pro fim da fila)</option>
+            <option value="numero_errado">Número errado (sai da base)</option>
+            <option value="sem_interesse">Sem interesse (sai da base)</option>
+            <option value="recusou">Recusou (sai da base)</option>
+          </select>
+        </div>
+        <div class="field"><label>Observação (opcional)</label><textarea id="obsRapida" rows="2"></textarea></div>
+        <button class="btn" id="btnConfirmarTabRapida">Confirmar tabulação e buscar outro cliente</button>
+        <div class="hint" id="tabRapidaStatus"></div>
+      </div>
     </div>
 
     <!-- ===== 1. SIMULAR ===== -->
@@ -244,12 +270,11 @@
 
       <div class="finalizar-bloco">
         <h3 style="color:var(--gold-soft);">🔁 Ainda não fechou</h3>
-        <p class="hint" style="margin-top:0;">Falou com o cliente e ele vai pensar/reagendar: fica com você. Não localizou: tabule como "Não localizei" e o cliente é liberado e volta pro fim da fila.</p>
+        <p class="hint" style="margin-top:0;">Falou com o cliente e ele vai pensar/reagendar: fica com você.</p>
         <div class="field">
           <label>Resultado do contato</label>
           <select id="resultado">
             <option value="">Selecione...</option>
-            <option value="nao_atende">Não localizei / não atende (libera o cliente e volta pro fim da fila)</option>
             <option value="vai_pensar">Vai pensar</option>
             <option value="reagendar">Reagendar</option>
             <option value="sem_interesse">Sem interesse (sai da base)</option>
@@ -534,6 +559,7 @@
       await carregarObservacoes();
       await carregarRelacionadas();
       recalcular();
+      await iniciarContato();
     }
 
     function cadastroCompleto() {
@@ -713,6 +739,7 @@
         lead_id: LEAD.id, consultor_id: PERFIL.id, resultado, observacao: observacao || null, reagendado_para: reagendadoPara,
       });
       if (error) { statusEl.style.color = "var(--danger)"; statusEl.textContent = "Erro: " + error.message; return; }
+      marcarTabulado();
 
       const finais = ["sem_interesse", "recusou", "numero_errado"];
       const novoStatus = finais.includes(resultado) ? "tabulado" : "em_andamento";
@@ -860,6 +887,7 @@
       await supabaseClient.from("tabulacoes").insert({
         lead_id: LEAD.id, consultor_id: PERFIL.id, resultado: "vendeu", observacao: null,
       });
+      marcarTabulado();
       await supabaseClient.from("leads").update({ status: "tabulado" }).eq("id", LEAD.id);
       LEAD.status = "tabulado";
       document.getElementById("statusBadge").className = "badge tabulado";
@@ -870,6 +898,85 @@
       document.getElementById("vendaSucesso").classList.remove("hidden");
       carregarObservacoes();
       setTimeout(() => { window.location.href = "consultor.html"; }, 1800);
+    });
+
+
+    // ---------- Contato: SIMULAR ou TABULAR (não sai da tela sem tabular) ----------
+    let TAB_PENDENTE = false;
+    const SEC_FLUXO = ["secaoSimular", "secaoCadastro", "secaoDocumentos", "secaoFinalizar", "secaoRelacionadas"];
+    function mostrarFluxo(mostrar) { SEC_FLUXO.forEach((id) => { const el = document.getElementById(id); if (el) el.style.display = mostrar ? "" : "none"; }); }
+
+    async function verificarTabulacaoPendente() {
+      if (LEAD.status !== "em_andamento") return false;
+      const { data: s } = await supabaseClient.from("sorteios").select("sorteado_em")
+        .eq("lead_id", LEAD.id).eq("consultor_id", PERFIL.id).order("sorteado_em", { ascending: false }).limit(1);
+      let q = supabaseClient.from("tabulacoes").select("lead_id", { count: "exact", head: true })
+        .eq("lead_id", LEAD.id).eq("consultor_id", PERFIL.id);
+      if (s && s[0]) q = q.gte("criado_em", s[0].sorteado_em);
+      const { count, error } = await q;
+      if (error) return false;
+      return (count || 0) === 0;
+    }
+
+    function aplicarBloqueioSaida() {
+      document.getElementById("avisoPendente").classList.toggle("hidden", !TAB_PENDENTE);
+      document.getElementById("linkVoltar").style.display = TAB_PENDENTE ? "none" : "";
+      document.getElementById("btnSairCliente").classList.toggle("hidden", TAB_PENDENTE || LEAD.status !== "em_andamento");
+    }
+
+    function marcarTabulado() { TAB_PENDENTE = false; aplicarBloqueioSaida(); }
+
+    window.addEventListener("beforeunload", (e) => { if (TAB_PENDENTE) { e.preventDefault(); e.returnValue = ""; } });
+
+    async function iniciarContato() {
+      TAB_PENDENTE = await verificarTabulacaoPendente();
+      const card = document.getElementById("secaoContato");
+      const chave = `mm_simular_${LEAD.id}`;
+      let escolheuSimular = false;
+      try { escolheuSimular = sessionStorage.getItem(chave) === "1"; } catch (e) {}
+      if (TAB_PENDENTE && !escolheuSimular) {
+        card.style.display = "";
+        mostrarFluxo(false);
+      } else {
+        card.style.display = "none";
+        mostrarFluxo(true);
+      }
+      aplicarBloqueioSaida();
+    }
+
+    document.getElementById("btnEscolherSimular").addEventListener("click", () => {
+      try { sessionStorage.setItem(`mm_simular_${LEAD.id}`, "1"); } catch (e) {}
+      document.getElementById("secaoContato").style.display = "none";
+      mostrarFluxo(true);
+      document.getElementById("secaoSimular").scrollIntoView({ behavior: "smooth" });
+    });
+
+    document.getElementById("btnEscolherTabular").addEventListener("click", () => {
+      document.getElementById("painelTabularRapido").classList.remove("hidden");
+    });
+
+    document.getElementById("btnConfirmarTabRapida").addEventListener("click", async () => {
+      const statusEl = document.getElementById("tabRapidaStatus");
+      const resultado = document.getElementById("resultadoRapido").value;
+      if (!resultado) { statusEl.style.color = "var(--danger)"; statusEl.textContent = "Selecione um resultado."; return; }
+      const obs = document.getElementById("obsRapida").value.trim();
+      const btn = document.getElementById("btnConfirmarTabRapida");
+      btn.disabled = true;
+      statusEl.style.color = "var(--muted)"; statusEl.textContent = "Salvando...";
+
+      const { error } = await supabaseClient.from("tabulacoes").insert({
+        lead_id: LEAD.id, consultor_id: PERFIL.id, resultado, observacao: obs || null,
+      });
+      if (error) { statusEl.style.color = "var(--danger)"; statusEl.textContent = "Erro: " + error.message; btn.disabled = false; return; }
+
+      if (resultado === "nao_atende") {
+        const { error: erroSair } = await supabaseClient.rpc("sair_do_cliente", { p_lead_id: LEAD.id });
+        if (erroSair) { statusEl.style.color = "var(--danger)"; statusEl.textContent = "Tabulado, mas erro ao liberar o cliente: " + erroSair.message; btn.disabled = false; marcarTabulado(); return; }
+      } else {
+        await supabaseClient.from("leads").update({ status: "tabulado" }).eq("id", LEAD.id);
+      }
+      marcarTabulado();
+      window.location.href = "consultor.html";
     });
 
     // ---------- Sair do cliente (devolve pra fila) ----------
