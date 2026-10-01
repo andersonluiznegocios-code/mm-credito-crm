@@ -71,6 +71,9 @@ table tfoot td { border-top: 2px solid var(--gold); font-weight: bold; color: va
 .sidebar-item:hover { background: rgba(212,175,55,0.08); color: var(--gold-soft); }
 .sidebar-item.ativo { background: rgba(212,175,55,0.14); color: var(--gold); border-left-color: var(--gold); font-weight: bold; }
 .main-content { flex: 1; min-width: 0; }
+.sidebar-busca { padding: 16px 22px; margin-top: 10px; border-top: 1px solid #2a3868; }
+.sidebar-busca label { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; }
+.sidebar-busca input { width: 100%; box-sizing: border-box; padding: 7px; font-size: 13px; }
 .page-panel { display: none; }
 .page-panel.ativa { display: block; }
 @media (max-width: 720px) {
