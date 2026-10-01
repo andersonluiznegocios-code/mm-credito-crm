@@ -18,10 +18,15 @@
 
   <div class="app-shell">
     <div class="sidebar">
-      <div class="sidebar-item ativo" data-pagina="sorteio" onclick="mudarPagina('sorteio')">🎲 Sorteio <span id="badgeRetornos" class="hidden" style="background:var(--danger); color:#fff; border-radius:10px; padding:1px 7px; font-size:11px; margin-left:4px;"></span></div>
-      <div class="sidebar-item" data-pagina="novocliente" onclick="mudarPagina('novocliente')">➕ Novo cliente (fora da base)</div>
-      <div class="sidebar-item" data-pagina="roteiros" onclick="mudarPagina('roteiros')">📚 Roteiros</div>
+      <div class="sidebar-item ativo" data-pagina="sorteio" onclick="mudarPagina('sorteio')">🎲 Sorteio</div>
       <div class="sidebar-item" data-pagina="contratos" onclick="mudarPagina('contratos')">📄 Contratos</div>
+
+      <div class="sidebar-busca">
+        <label>Buscar cliente (CPF)</label>
+        <input type="text" id="buscaCpfSidebar" placeholder="Só números">
+        <button class="btn secondary" id="btnBuscarCpfSidebar" style="width:100%; margin-top:6px;">Buscar</button>
+        <div class="error-msg" id="erroBuscaCpfSidebar" style="font-size:11px;"></div>
+      </div>
     </div>
 
     <div class="main-content">
@@ -31,53 +36,6 @@
         <div class="page-panel ativa" id="page-sorteio">
           <h1>Meus clientes</h1>
           <p class="subtitle">Sorteie um novo cliente quando quiser trabalhar em alguém novo. Clique num cliente já sorteado pra abrir a tela dele.</p>
-
-          <div class="card hidden" id="cardPendente" style="border:1px solid var(--gold-soft);">
-            <h2 style="margin-top:0; color:var(--gold-soft);">⚠ Cliente aguardando tabulação</h2>
-            <p class="hint" style="margin-top:0;">Você precisa tabular ou finalizar este cliente antes de sortear outro ou cadastrar um novo.</p>
-            <a class="btn" id="linkPendente" href="#" style="display:inline-block; text-decoration:none;">Continuar atendimento</a>
-          </div>
-
-          <div class="card" id="cardMetaDia">
-            <h2 style="margin-top:0;">🎯 Minha meta de hoje</h2>
-            <div id="metaDiaBarras"></div>
-            <h3 style="margin-bottom:6px; color:var(--gold-soft);">Ranking do dia</h3>
-            <div class="table-wrap">
-              <table>
-                <thead><tr><th>#</th><th>Consultor</th><th>Atendimentos</th><th>Simulações</th><th>Vendas</th></tr></thead>
-                <tbody id="tbodyRankingDia"></tbody>
-              </table>
-            </div>
-          </div>
-
-          <div class="card hidden" id="cardBoletos">
-            <h2 style="margin-top:0;">🧾 Meus boletos de quitação pendentes</h2>
-            <div class="table-wrap">
-              <table>
-                <thead><tr><th>Cliente</th><th>Forma</th><th>Banco / contrato</th><th>Vencimento</th><th>Situação</th></tr></thead>
-                <tbody id="tbodyBoletosMeus"></tbody>
-              </table>
-            </div>
-          </div>
-
-          <div class="card hidden" id="cardAvaliacoes">
-            <h2 style="margin-top:0;">⭐ Minhas avaliações de qualidade</h2>
-            <div id="resumoAvaliacoes" class="hint" style="margin-bottom:8px;"></div>
-            <div class="table-wrap"><table>
-              <thead><tr><th>Data</th><th>Nota</th><th>Observação</th></tr></thead>
-              <tbody id="tbodyAvaliacoes"></tbody>
-            </table></div>
-          </div>
-
-          <div class="card hidden" id="cardReagendamentos">
-            <h2 style="margin-top:0;">📅 Retornos de hoje (ou atrasados)</h2>
-            <div class="table-wrap">
-              <table>
-                <thead><tr><th>Cliente</th><th>CPF</th><th>Reagendado para</th></tr></thead>
-                <tbody id="tbodyReagendamentos"></tbody>
-              </table>
-            </div>
-          </div>
 
           <div class="card">
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
@@ -97,6 +55,15 @@
             </div>
           </div>
 
+          <div class="card hidden" id="cardReagendamentos">
+            <h2 style="margin-top:0;">📅 Retornos de hoje (ou atrasados)</h2>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Cliente</th><th>CPF</th><th>Reagendado para</th></tr></thead>
+                <tbody id="tbodyReagendamentos"></tbody>
+              </table>
+            </div>
+          </div>
 
           <div class="grid-stats" id="stats"></div>
 
@@ -117,53 +84,6 @@
                 <tbody id="tbodyLeads"></tbody>
               </table>
             </div>
-          </div>
-        </div>
-
-        <!-- ===== PÁGINA: NOVO CLIENTE (FORA DA BASE) ===== -->
-        <div class="page-panel" id="page-novocliente">
-          <h1>Novo cliente (fora da base)</h1>
-          <p class="subtitle">Use quando for atender um cliente que não veio da base. Todos os campos são obrigatórios. O cliente fica registrado no CRM e entra no mailing futuro.</p>
-          <div class="card">
-            <div class="field"><label>Nome completo</label><input type="text" id="ncNome" autocomplete="off"></div>
-            <div class="field"><label>CPF</label><input type="text" id="ncCpf" inputmode="numeric" placeholder="Somente números" maxlength="14" autocomplete="off"></div>
-            <div class="field"><label>Data de nascimento</label><input type="date" id="ncNascimento"></div>
-            <div class="field"><label>PMT (parcela atual, R$)</label><input type="number" step="0.01" min="0" id="ncPmt"></div>
-            <div class="field"><label>Telefone(s) — com DDD (separe por ; se houver mais de um)</label><input type="text" id="ncTelefones" placeholder="11999998888;1133334444" autocomplete="off"></div>
-            <div class="field"><label>Convênio do cliente</label>
-              <select id="ncConvenio"><option value="">Selecione...</option></select>
-              <div class="hint" id="ncConvenioAviso"></div>
-            </div>
-            <button class="btn" id="btnCriarCliente">Cadastrar e abrir atendimento</button>
-            <div class="error-msg" id="erroNovoCliente"></div>
-          </div>
-        </div>
-
-        <!-- ===== PÁGINA: ROTEIROS ===== -->
-        <div class="page-panel" id="page-roteiros">
-          <h1>Roteiros operacionais</h1>
-          <p class="subtitle">Consulte o roteiro de cada convênio para tirar dúvidas durante o atendimento.</p>
-          <div class="card">
-            <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px;">
-              <div class="field"><label>Convênio</label><select id="rotFiltroConvenio"><option value="">Todos</option></select></div>
-              <div class="field"><label>Buscar pelo título</label><input type="text" id="rotBusca" placeholder="Digite para filtrar"></div>
-            </div>
-          </div>
-          <div class="card">
-            <div class="table-wrap">
-              <table>
-                <thead><tr><th>Convênio</th><th>Roteiro</th><th>Atualizado em</th><th></th></tr></thead>
-                <tbody id="tbodyRoteiros"></tbody>
-              </table>
-            </div>
-          </div>
-          <div class="card hidden" id="cardLeitorRoteiro">
-            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
-              <h2 style="margin:0;" id="tituloLeitorRoteiro">Roteiro</h2>
-              <div><a class="btn secondary" id="linkAbrirRoteiro" target="_blank" rel="noopener" style="text-decoration:none;">Abrir em nova aba</a>
-              <button class="btn secondary" onclick="document.getElementById('cardLeitorRoteiro').classList.add('hidden')">Fechar</button></div>
-            </div>
-            <iframe id="frameRoteiro" style="width:100%; height:75vh; border:0; background:#fff; border-radius:8px; margin-top:12px;"></iframe>
           </div>
         </div>
 
@@ -204,77 +124,7 @@
       document.querySelectorAll(".sidebar-item").forEach((el) => el.classList.toggle("ativo", el.dataset.pagina === nome));
       document.querySelectorAll(".page-panel").forEach((el) => el.classList.toggle("ativa", el.id === "page-" + nome));
       if (nome === "contratos" && CONTRATOS_CACHE.length === 0) carregarContratos();
-      if (nome === "roteiros") carregarRoteiros();
     }
-
-
-    // ---------- Novo cliente (fora da base) ----------
-    const OUTRO_CONVENIO = "__outro__";
-    function cpfValido(cpf) {
-      const d = cpf.replace(/\D/g, "");
-      if (d.length !== 11 || /^(\d)\1+$/.test(d)) return false;
-      for (let t = 9; t < 11; t++) {
-        let soma = 0;
-        for (let i = 0; i < t; i++) soma += parseInt(d[i], 10) * (t + 1 - i);
-        const dv = ((soma * 10) % 11) % 10;
-        if (dv !== parseInt(d[t], 10)) return false;
-      }
-      return true;
-    }
-
-    async function carregarConveniosNovoCliente() {
-      const { data } = await supabaseClient.from("coeficientes").select("convenio");
-      const convenios = [...new Set((data || []).map((c) => c.convenio))].sort();
-      document.getElementById("ncConvenio").innerHTML =
-        `<option value="">Selecione...</option>` +
-        convenios.map((c) => `<option value="${String(c).replace(/"/g, "&quot;")}">${c}</option>`).join("") +
-        `<option value="${OUTRO_CONVENIO}">Outro (não trabalhamos) — só registrar/tabular</option>`;
-    }
-
-    document.getElementById("ncConvenio").addEventListener("change", (e) => {
-      document.getElementById("ncConvenioAviso").textContent =
-        e.target.value === OUTRO_CONVENIO ? "Sem tabela cadastrada para esse convênio: o cliente fica registrado e só poderá ser tabulado, não simulado." : "";
-    });
-
-    document.getElementById("btnCriarCliente").addEventListener("click", async () => {
-      const erroEl = document.getElementById("erroNovoCliente");
-      erroEl.textContent = ""; erroEl.style.color = "";
-      const nome = document.getElementById("ncNome").value.trim().replace(/\s+/g, " ");
-      const cpf = document.getElementById("ncCpf").value.replace(/\D/g, "");
-      const nasc = document.getElementById("ncNascimento").value;
-      const pmt = parseFloat(document.getElementById("ncPmt").value);
-      const telefones = document.getElementById("ncTelefones").value.split(";").map((t) => t.replace(/\D/g, "")).filter(Boolean);
-      const convSel = document.getElementById("ncConvenio").value;
-
-      if (nome.split(" ").length < 2) { erroEl.textContent = "Informe o nome completo."; return; }
-      if (!cpfValido(cpf)) { erroEl.textContent = "CPF inválido."; return; }
-      if (!nasc || new Date(nasc) >= new Date() || new Date(nasc) < new Date("1900-01-01")) { erroEl.textContent = "Informe uma data de nascimento válida."; return; }
-      if (!pmt || pmt <= 0) { erroEl.textContent = "Informe a PMT (maior que zero)."; return; }
-      if (telefones.length === 0 || telefones.some((t) => t.length < 10 || t.length > 11)) { erroEl.textContent = "Informe telefone(s) com DDD (10 ou 11 dígitos)."; return; }
-      if (!convSel) { erroEl.textContent = "Selecione o convênio do cliente."; return; }
-
-      const { data: chk } = await supabaseClient.rpc("checar_telefones", { p_telefones: telefones });
-      const errados = (chk || []).filter((r) => r.errado).map((r) => r.telefone);
-      const repetidos = (chk || []).filter((r) => r.outros > 0).map((r) => `${r.telefone} (em ${r.outros} cliente(s))`);
-      if (errados.length || repetidos.length) {
-        const aviso = (errados.length ? `Já marcado como ERRADO em outro cliente: ${errados.join(", ")}.\n` : "") + (repetidos.length ? `Número repetido: ${repetidos.join(", ")}.\n` : "");
-        if (!confirm(aviso + "\nDeseja cadastrar mesmo assim?")) return;
-      }
-
-      const btn = document.getElementById("btnCriarCliente");
-      btn.disabled = true; btn.textContent = "Cadastrando...";
-      const { data, error } = await supabaseClient.rpc("criar_cliente_manual", {
-        p_cpf: cpf, p_nome: nome, p_pmt: pmt, p_telefones: telefones,
-        p_data_nascimento: nasc, p_convenio: convSel === OUTRO_CONVENIO ? "OUTRO" : convSel,
-      });
-      btn.disabled = false; btn.textContent = "Cadastrar e abrir atendimento";
-      if (error) {
-        const mp = /CLIENTE_PENDENTE:(\d+)/.exec(error.message || "");
-        if (mp) { erroEl.textContent = "Você tem um cliente aguardando tabulação. Abrindo o atendimento..."; setTimeout(() => { window.location.href = `cliente.html?id=${mp[1]}`; }, 1200); return; }
-        erroEl.textContent = "Erro ao cadastrar: " + error.message; return;
-      }
-      window.location.href = `cliente.html?id=${data.id}`;
-    });
 
     async function carregarLeads() {
       const { data, error } = await supabaseClient
@@ -305,9 +155,6 @@
         .sort((a, b) => new Date(a.ultima.reagendado_para) - new Date(b.ultima.reagendado_para));
 
       const card = document.getElementById("cardReagendamentos");
-      const badge = document.getElementById("badgeRetornos");
-      badge.textContent = pendentes.length;
-      badge.classList.toggle("hidden", pendentes.length === 0);
       if (pendentes.length === 0) { card.classList.add("hidden"); return; }
       card.classList.remove("hidden");
       document.getElementById("tbodyReagendamentos").innerHTML = pendentes.map(({ lead, ultima }) => {
@@ -325,7 +172,7 @@
       const total = LEADS_CACHE.length;
       const andamento = LEADS_CACHE.filter((l) => l.status === "em_andamento").length;
       const tabulados = LEADS_CACHE.filter((l) => l.status === "tabulado").length;
-      const producao = CONTRATOS_CACHE.filter(contratoConta).reduce((s, c) => s + (c.producao || 0), 0);
+      const producao = CONTRATOS_CACHE.reduce((s, c) => s + (c.producao || 0), 0);
       const meta = PERFIL.meta_producao || 0;
       const pct = meta > 0 ? Math.min(100, (producao / meta) * 100) : 0;
       document.getElementById("stats").innerHTML = `
@@ -394,121 +241,32 @@
 
       const { data, error } = await supabaseClient.rpc("sortear_cliente");
 
-      if (error) {
-        const mp = /CLIENTE_PENDENTE:(\d+)/.exec(error.message || "");
-        if (mp) { window.location.href = `cliente.html?id=${mp[1]}`; return; }
-        erroEl.textContent = "Erro ao sortear: " + error.message; btn.disabled = false; btn.textContent = "Sortear novo cliente"; return;
-      }
+      if (error) { erroEl.textContent = "Erro ao sortear: " + error.message; btn.disabled = false; btn.textContent = "Sortear novo cliente"; return; }
       if (!data) { erroEl.textContent = "Não há clientes disponíveis no momento."; btn.disabled = false; btn.textContent = "Sortear novo cliente"; atualizarDisponiveis(); return; }
 
       window.location.href = `cliente.html?id=${data.id}`;
     });
 
+    // ---------- Buscar cliente por CPF (lateral) ----------
+    document.getElementById("btnBuscarCpfSidebar").addEventListener("click", async () => {
+      const erroEl = document.getElementById("erroBuscaCpfSidebar");
+      erroEl.textContent = "";
+      const cpf = document.getElementById("buscaCpfSidebar").value.trim();
+      if (!cpf) { erroEl.textContent = "Digite um CPF."; return; }
 
-    // ---------- Meta e ranking do dia ----------
-    function inicioDoDia() { const d = new Date(); d.setHours(0, 0, 0, 0); return d.toISOString(); }
-    function barraMeta(rotulo, valor, meta) {
-      const v = Number(valor) || 0, m = Number(meta) || 0;
-      const pct = m > 0 ? Math.min(100, (v / m) * 100) : 0;
-      return `<div style="margin:10px 0;">
-        <div style="display:flex; justify-content:space-between; font-size:14px;"><span>${rotulo}</span><strong>${v}${m > 0 ? " / " + m : ""}${m > 0 && v >= m ? " ✅" : ""}</strong></div>
-        ${m > 0 ? `<div class="meta-progress" style="width:100%; height:12px;"><div class="meta-progress-fill${pct >= 100 ? " completo" : ""}" style="width:${pct}%;"></div></div>` : `<div class="hint">Sem meta definida pelo administrador.</div>`}
-      </div>`;
-    }
-    async function carregarMetaDia() {
-      const ini = inicioDoDia();
-      const [{ data: prog }, { data: rank }] = await Promise.all([
-        supabaseClient.rpc("progresso_dia", { p_ini: ini }),
-        supabaseClient.rpc("ranking_dia", { p_ini: ini }),
-      ]);
-      const p = (prog && prog[0]) || {};
-      document.getElementById("metaDiaBarras").innerHTML =
-        barraMeta("Atendimentos", p.atendimentos, p.meta_atendimentos) + barraMeta("Simulações", p.simulacoes, p.meta_simulacoes) +
-        `<div style="font-size:14px; margin:10px 0;">Vendas hoje: <strong>${p.vendas || 0}</strong></div>`;
-      document.getElementById("tbodyRankingDia").innerHTML = (rank || []).map((c, i) => `
-        <tr style="${c.consultor_id === PERFIL.id ? "background: rgba(212,175,55,0.1); font-weight:bold;" : ""}">
-          <td>${i + 1}º</td><td>${c.nome}${c.consultor_id === PERFIL.id ? " (você)" : ""}</td><td>${c.atendimentos}</td><td>${c.simulacoes}</td><td>${c.vendas}</td>
-        </tr>`).join("") || `<tr><td colspan="5" style="color:var(--muted);">Sem dados hoje.</td></tr>`;
-    }
+      const btn = document.getElementById("btnBuscarCpfSidebar");
+      btn.disabled = true; btn.textContent = "Buscando...";
 
-    // ---------- Meus boletos de quitação ----------
-    const FORMA_BOLETO = { bacen: "Bacen", consumidor: "Consumidor", procuracao: "Procuração", contato_interno: "Contato interno" };
-    async function carregarBoletosMeus() {
-      const { data } = await supabaseClient.from("boletos_quitacao").select("*, leads(nome)")
-        .eq("consultor_id", PERFIL.id).eq("status", "pendente").order("vencimento");
-      const card = document.getElementById("cardBoletos");
-      if (!data || data.length === 0) { card.classList.add("hidden"); return; }
-      card.classList.remove("hidden");
-      const hoje = new Date().toISOString().slice(0, 10);
-      document.getElementById("tbodyBoletosMeus").innerHTML = data.map((b) => {
-        const atrasado = b.vencimento < hoje, hojeVence = b.vencimento === hoje;
-        const cor = atrasado ? "color:var(--danger); font-weight:bold;" : hojeVence ? "color:var(--gold-soft); font-weight:bold;" : "";
-        return `<tr style="cursor:pointer;" onclick="window.location.href='cliente.html?id=${b.lead_id}'">
-          <td>${b.leads ? b.leads.nome : "(cliente)"}</td><td>${FORMA_BOLETO[b.forma] || b.forma}</td>
-          <td>${b.banco || "-"}${b.contrato ? " · " + b.contrato : ""}</td>
-          <td style="${cor}">${new Date(b.vencimento + "T00:00:00").toLocaleDateString("pt-BR")}</td>
-          <td style="${cor}">${atrasado ? "ATRASADO" : hojeVence ? "Vence hoje" : "Pendente"}</td></tr>`;
-      }).join("");
-    }
+      const { data, error } = await supabaseClient.rpc("buscar_e_sortear_cliente", { p_cpf: cpf });
 
+      btn.disabled = false; btn.textContent = "Buscar";
+      if (error) { erroEl.textContent = error.message.replace(/^.*?:\s*/, ""); return; }
 
-    // ---------- Roteiros (PDF por convênio) ----------
-    let ROTEIROS = [];
-    async function carregarRoteiros() {
-      const { data, error } = await supabaseClient.from("roteiros").select("*").order("convenio").order("titulo");
-      if (error) { document.getElementById("tbodyRoteiros").innerHTML = `<tr><td colspan="4" style="color:var(--muted);">Erro: ${error.message}</td></tr>`; return; }
-      ROTEIROS = data || [];
-      const sel = document.getElementById("rotFiltroConvenio");
-      const atual = sel.value;
-      sel.innerHTML = `<option value="">Todos</option>` + [...new Set(ROTEIROS.map((r) => r.convenio))].sort().map((c) => `<option value="${c}">${c}</option>`).join("");
-      sel.value = atual;
-      renderRoteiros();
-    }
-    function renderRoteiros() {
-      const conv = document.getElementById("rotFiltroConvenio").value;
-      const busca = document.getElementById("rotBusca").value.trim().toLowerCase();
-      const lista = ROTEIROS.filter((r) => (!conv || r.convenio === conv) && (!busca || r.titulo.toLowerCase().includes(busca)));
-      document.getElementById("tbodyRoteiros").innerHTML = lista.map((r) => `<tr>
-        <td>${r.convenio}</td><td>${r.titulo}</td><td>${new Date(r.atualizado_em).toLocaleDateString("pt-BR")}</td>
-        <td><button class="btn" style="padding:4px 12px; font-size:13px;" onclick="abrirRoteiro(${r.id})">Ler roteiro</button></td></tr>`).join("")
-        || `<tr><td colspan="4" style="color:var(--muted);">Nenhum roteiro disponível ainda.</td></tr>`;
-    }
-    async function abrirRoteiro(id) {
-      const r = ROTEIROS.find((x) => x.id === id);
-      if (!r) return;
-      const { data, error } = await supabaseClient.storage.from("roteiros").createSignedUrl(r.arquivo_path, 3600);
-      if (error) { alert("Não foi possível abrir o roteiro: " + error.message); return; }
-      document.getElementById("tituloLeitorRoteiro").textContent = `${r.convenio} — ${r.titulo}`;
-      document.getElementById("frameRoteiro").src = data.signedUrl;
-      document.getElementById("linkAbrirRoteiro").href = data.signedUrl;
-      const card = document.getElementById("cardLeitorRoteiro");
-      card.classList.remove("hidden");
-      card.scrollIntoView({ behavior: "smooth" });
-    }
-    document.getElementById("rotFiltroConvenio").addEventListener("change", renderRoteiros);
-    document.getElementById("rotBusca").addEventListener("input", renderRoteiros);
-
-    // ---------- Minhas avaliações ----------
-    async function carregarAvaliacoes() {
-      const { data } = await supabaseClient.from("avaliacoes_qualidade").select("*").eq("consultor_id", PERFIL.id).order("criado_em", { ascending: false }).limit(10);
-      const card = document.getElementById("cardAvaliacoes");
-      if (!data || data.length === 0) { card.classList.add("hidden"); return; }
-      card.classList.remove("hidden");
-      const media = (data.reduce((t, a) => t + a.nota, 0) / data.length).toFixed(1);
-      document.getElementById("resumoAvaliacoes").textContent = `Média das últimas ${data.length} avaliações: ${media} / 10`;
-      document.getElementById("tbodyAvaliacoes").innerHTML = data.map((a) => `<tr><td>${new Date(a.criado_em).toLocaleDateString("pt-BR")}</td><td><strong>${a.nota}</strong></td><td>${a.observacao || "-"}</td></tr>`).join("");
-    }
-
-    async function verificarPendente() {
-      const { data } = await supabaseClient.rpc("cliente_pendente");
-      const card = document.getElementById("cardPendente");
-      if (data) {
-        document.getElementById("linkPendente").href = `cliente.html?id=${data}`;
-        card.classList.remove("hidden");
-      } else {
-        card.classList.add("hidden");
-      }
-    }
+      window.location.href = `cliente.html?id=${data.id}`;
+    });
+    document.getElementById("buscaCpfSidebar").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") document.getElementById("btnBuscarCpfSidebar").click();
+    });
 
     async function carregarRanking() {
       const { data, error } = await supabaseClient.rpc("ranking_consultores");
@@ -568,11 +326,11 @@
         </tr>
       `).join("");
 
-      const somaLiberacao = filtrados.filter(contratoConta).reduce((s, c) => s + (c.liberacao || 0), 0);
-      const somaProducao = filtrados.filter(contratoConta).reduce((s, c) => s + (c.producao || 0), 0);
+      const somaLiberacao = filtrados.reduce((s, c) => s + (c.liberacao || 0), 0);
+      const somaProducao = filtrados.reduce((s, c) => s + (c.producao || 0), 0);
       tfoot.innerHTML = `
         <tr>
-          <td colspan="7">Total (${filtrados.length} contrato${filtrados.length === 1 ? "" : "s"}; valores sem cancelados)</td>
+          <td colspan="7">Total (${filtrados.length} contrato${filtrados.length === 1 ? "" : "s"})</td>
           <td>${formatBRL(somaLiberacao)}</td>
           <td>${formatBRL(somaProducao)}</td>
           <td colspan="4"></td>
@@ -587,13 +345,6 @@
       PERFIL = auth.profile;
       document.getElementById("whoami").textContent = PERFIL.nome;
       carregarLeads();
-      verificarPendente();
-      carregarMetaDia();
-      carregarAvaliacoes();
-      iniciarLembretes(PERFIL);
-      entrarPresenca(PERFIL);
-      carregarBoletosMeus();
-      carregarConveniosNovoCliente();
       atualizarDisponiveis();
       carregarRanking();
       carregarContratos();
