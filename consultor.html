@@ -20,6 +20,7 @@
     <div class="sidebar">
       <div class="sidebar-item ativo" data-pagina="sorteio" onclick="mudarPagina('sorteio')">🎲 Sorteio</div>
       <div class="sidebar-item" data-pagina="contratos" onclick="mudarPagina('contratos')">📄 Contratos</div>
+      <div class="sidebar-item" data-pagina="roteiros" onclick="mudarPagina('roteiros')">📜 Roteiros</div>
 
       <div class="sidebar-busca">
         <label>Buscar cliente (CPF)</label>
@@ -108,6 +109,13 @@
           </div>
         </div>
 
+        <!-- ===== PÁGINA: ROTEIROS ===== -->
+        <div class="page-panel" id="page-roteiros">
+          <h1>Roteiros operacionais</h1>
+          <p class="subtitle">Procedimentos publicados pelo administrador.</p>
+          <div id="listaRoteiros"></div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -120,10 +128,29 @@
     let LEADS_CACHE = [];
     let CONTRATOS_CACHE = [];
 
+    let ROTEIROS_CACHE = [];
+
     function mudarPagina(nome) {
       document.querySelectorAll(".sidebar-item").forEach((el) => el.classList.toggle("ativo", el.dataset.pagina === nome));
       document.querySelectorAll(".page-panel").forEach((el) => el.classList.toggle("ativa", el.id === "page-" + nome));
       if (nome === "contratos" && CONTRATOS_CACHE.length === 0) carregarContratos();
+      if (nome === "roteiros" && ROTEIROS_CACHE.length === 0) carregarRoteiros();
+    }
+
+    async function carregarRoteiros() {
+      const lista = document.getElementById("listaRoteiros");
+      lista.innerHTML = `<p class="hint">Carregando...</p>`;
+      const { data, error } = await supabaseClient.from("roteiros").select("*").order("atualizado_em", { ascending: false });
+      if (error) { lista.innerHTML = `<p class="hint">Erro ao carregar roteiros.</p>`; return; }
+      ROTEIROS_CACHE = data || [];
+      if (ROTEIROS_CACHE.length === 0) { lista.innerHTML = `<p class="hint">Nenhum roteiro publicado ainda.</p>`; return; }
+      lista.innerHTML = ROTEIROS_CACHE.map((r) => `
+        <div class="card roteiro-card">
+          <h3>${r.titulo}</h3>
+          <div class="conteudo">${r.conteudo.replace(/</g, "&lt;")}</div>
+          <div class="meta">Atualizado em ${new Date(r.atualizado_em).toLocaleString("pt-BR")}</div>
+        </div>
+      `).join("");
     }
 
     async function carregarLeads() {
