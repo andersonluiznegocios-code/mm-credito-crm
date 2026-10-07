@@ -6,6 +6,20 @@
 <title>MM Crédito — Meus Clientes</title>
 <link rel="icon" href="favicon.png">
 <link rel="stylesheet" href="style.css">
+<style>
+  .banner-exclusivo { display:flex; align-items:center; gap:18px; padding:20px 24px; margin-bottom:18px; border-radius:12px;
+    background: linear-gradient(135deg, rgba(212,175,55,0.22), rgba(212,175,55,0.06)); border:1px solid #d4af37;
+    box-shadow: 0 0 24px rgba(212,175,55,0.25); }
+  .banner-exclusivo .estrela { font-size:44px; line-height:1; filter: drop-shadow(0 0 8px rgba(255,215,0,0.7)); }
+  .banner-exclusivo .banner-titulo { font-size:18px; font-weight:bold; color:#e8c766; margin-bottom:4px; }
+  .banner-exclusivo .banner-texto { font-size:14px; color:#ffffff; line-height:1.5; }
+  .base-card { display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; padding:14px 18px; margin-bottom:10px;
+    border:1px solid #2a3868; border-radius:10px; background:#131c3d; }
+  .base-card.exclusiva { border-color:#d4af37; background: linear-gradient(135deg, rgba(212,175,55,0.14), #131c3d); }
+  .base-card .base-nome { font-weight:bold; font-size:15px; }
+  .base-card .base-desc { font-size:12px; color:#9aa3c2; margin-top:2px; }
+  .base-card .tag { display:inline-block; margin-left:8px; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:bold; background:rgba(212,175,55,0.2); color:#e8c766; border:1px solid #d4af37; }
+</style>
 </head>
 <body>
   <div class="topbar">
@@ -36,6 +50,7 @@
 
         <!-- ===== PÁGINA: SORTEIO ===== -->
         <div class="page-panel ativa" id="page-sorteio">
+          <div id="bannerExclusiva" class="hidden"></div>
           <h1>Meus clientes</h1>
           <p class="subtitle">Sorteie um novo cliente quando quiser trabalhar em alguém novo. Clique num cliente já sorteado pra abrir a tela dele.</p>
 
@@ -46,6 +61,8 @@
             </div>
             <div class="error-msg" id="erroSorteio"></div>
           </div>
+
+          <div id="basesSorteio"></div>
 
           <div class="card">
             <h2 style="margin-top:0;">🏆 Ranking da equipe</h2>
@@ -152,6 +169,8 @@
     let CONTRATOS_CACHE = [];
 
     let ROTEIROS_CACHE = [];
+    let BASES_OP = [];
+    let BASES_EXCL = new Set();
 
     function mudarPagina(nome) {
       document.querySelectorAll(".sidebar-item").forEach((el) => el.classList.toggle("ativo", el.dataset.pagina === nome));
@@ -222,6 +241,83 @@
       if (error) { erroEl.textContent = error.message; return; }
       window.location.href = `cliente.html?id=${data.id}`;
     });
+
+    // ---------- Bases (exclusivas / abertas) ----------
+    const escHtml = (t) => String(t ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;");
+
+    function tratarErroSorteio(error, erroEl) {
+      const m = /CLIENTE_PENDENTE:(\d+)/.exec((error && error.message) || "");
+      if (m) {
+        erroEl.textContent = "Você tem um cliente pendente. Abrindo...";
+        window.location.href = `cliente.html?id=${m[1]}`;
+        return;
+      }
+      erroEl.textContent = "Erro ao sortear: " + error.message;
+    }
+
+    async function carregarBases() {
+      const { data, error } = await supabaseClient.rpc("bases_do_operador");
+      if (error || !data) return; // sem a função no banco, segue no modo antigo
+      BASES_OP = data;
+      BASES_EXCL = new Set(data.filter((b) => b.exclusiva).map((b) => b.base_id));
+      renderBases();
+      renderTabela();
+    }
+
+    function renderBases() {
+      const exclusivas = BASES_OP.filter((b) => b.exclusiva);
+      const banner = document.getElementById("bannerExclusiva");
+      if (exclusivas.length > 0) {
+        const nomes = exclusivas.map((b) => `<strong>${escHtml(b.nome)}</strong>`).join(", ");
+        const total = exclusivas.reduce((t, b) => t + Number(b.disponiveis || 0), 0);
+        const desc = exclusivas.map((b) => b.descricao).filter(Boolean).map(escHtml).join(" · ");
+        banner.className = "";
+        banner.innerHTML = `
+          <div class="banner-exclusivo">
+            <div class="estrela">⭐</div>
+            <div>
+              <div class="banner-titulo">Você está em uma base exclusiva</div>
+              <div class="banner-texto">
+                Você foi escolhido(a) para trabalhar ${nomes} — um mailing reservado só para alguns operadores da equipe.
+                ${desc ? `<br>${desc}` : ""}
+                <br>${total > 0 ? `<strong>${total}</strong> cliente(s) esperando por você. ` : ""}Capriche: essa é uma oportunidade que nem todo mundo tem.
+              </div>
+            </div>
+          </div>`;
+      } else {
+        banner.className = "hidden";
+        banner.innerHTML = "";
+      }
+
+      const box = document.getElementById("basesSorteio");
+      const btnGeral = document.getElementById("btnSortear");
+      if (BASES_OP.length > 1) {
+        btnGeral.style.display = "none";
+        box.innerHTML = BASES_OP.map((b) => `
+          <div class="base-card ${b.exclusiva ? "exclusiva" : ""}">
+            <div>
+              <div class="base-nome">${b.exclusiva ? "⭐ " : ""}${escHtml(b.nome)}${b.exclusiva ? '<span class="tag">Exclusiva</span>' : ""}</div>
+              ${b.descricao ? `<div class="base-desc">${escHtml(b.descricao)}</div>` : ""}
+              <div class="base-desc">${Number(b.disponiveis || 0)} disponível(is)</div>
+            </div>
+            <button class="btn" ${Number(b.disponiveis || 0) === 0 ? "disabled" : ""} onclick="sortearDaBase(${b.base_id}, this)">Sortear desta base</button>
+          </div>`).join("");
+      } else {
+        btnGeral.style.display = "";
+        box.innerHTML = "";
+      }
+    }
+
+    async function sortearDaBase(baseId, btnEl) {
+      const erroEl = document.getElementById("erroSorteio");
+      erroEl.textContent = "";
+      const textoOriginal = btnEl.textContent;
+      btnEl.disabled = true; btnEl.textContent = "Sorteando...";
+      const { data, error } = await supabaseClient.rpc("sortear_cliente_base", { p_base_id: baseId });
+      if (error) { tratarErroSorteio(error, erroEl); btnEl.disabled = false; btnEl.textContent = textoOriginal; return; }
+      if (!data) { erroEl.textContent = "Não há clientes disponíveis nessa base no momento."; btnEl.disabled = false; btnEl.textContent = textoOriginal; carregarBases(); atualizarDisponiveis(); return; }
+      window.location.href = `cliente.html?id=${data.id}`;
+    }
 
     async function carregarLeads() {
       const { data, error } = await supabaseClient
@@ -308,7 +404,7 @@
 
       tbody.innerHTML = filtrados.map((l) => `
         <tr style="cursor:pointer;" onclick="window.location.href='cliente.html?id=${l.id}'">
-          <td>${l.nome || "(sem nome)"}</td>
+          <td>${BASES_EXCL.has(l.base_id) ? "⭐ " : ""}${l.nome || "(sem nome)"}</td>
           <td>${l.cpf ? maskCPF(l.cpf) : "-"}</td>
           <td>${formatBRL(l.pmt)}</td>
           <td><span class="badge ${l.status}">${STATUS_LABEL[l.status]}</span></td>
@@ -338,7 +434,7 @@
 
       const { data, error } = await supabaseClient.rpc("sortear_cliente");
 
-      if (error) { erroEl.textContent = "Erro ao sortear: " + error.message; btn.disabled = false; btn.textContent = "Sortear novo cliente"; return; }
+      if (error) { tratarErroSorteio(error, erroEl); btn.disabled = false; btn.textContent = "Sortear novo cliente"; return; }
       if (!data) { erroEl.textContent = "Não há clientes disponíveis no momento."; btn.disabled = false; btn.textContent = "Sortear novo cliente"; atualizarDisponiveis(); return; }
 
       window.location.href = `cliente.html?id=${data.id}`;
@@ -445,6 +541,7 @@
       atualizarDisponiveis();
       carregarRanking();
       carregarContratos();
+      carregarBases();
     })();
   </script>
 </body>
