@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MM Crédito — Bases de clientes</title>
+<link rel="icon" href="favicon.png">
+<link rel="stylesheet" href="style.css">
+<style>
+  .tag-excl { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:bold; background:rgba(212,175,55,0.18); color:#e8c766; border:1px solid #d4af37; }
+  .tag-aberta { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; background:#1d2a55; color:#9aa3c2; }
+  .ops-lista { font-size:12px; color:#9aa3c2; max-width:260px; }
+  .mod-ops { max-height:220px; overflow-y:auto; border:1px solid #2a3868; border-radius:8px; padding:8px 12px; margin-bottom:10px; }
+  .mod-ops label { display:block; padding:3px 0; cursor:pointer; }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand"><img src="logo.png" alt="MM Crédito"> ADMIN</div>
+    <div style="display:flex; align-items:center; gap:16px;">
+      <span class="who" id="whoami"></span>
+      <button onclick="logout()">Sair</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <a href="admin.html" style="color:var(--gold-soft); text-decoration:none; font-size:13px;">&larr; Voltar ao painel</a>
+    <h1 style="margin-top:12px;">Bases de clientes</h1>
+    <p class="subtitle">Cada mailing é uma base. Base <strong>aberta</strong> = todos os operadores sorteiam. Base <strong>exclusiva</strong> = só os operadores que você marcar (eles recebem um aviso ⭐ no painel).</p>
+
+    <div class="card">
+      <button class="btn" id="btnNovaBase">+ Nova base</button>
+      <div class="error-msg" id="erroBases"></div>
+    </div>
+
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Base</th><th>Tipo</th><th>Operadores com acesso</th><th>Disponíveis</th><th>Em andamento</th><th>Tabulados</th><th>Total</th><th>Situação</th><th></th></tr>
+          </thead>
+          <tbody id="tbodyBases"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" id="cardImportar">
+      <h2 style="margin-top:0;">Importar mailing para uma base</h2>
+      <p class="hint" style="margin-top:0;">Mesmo formato de sempre: CPF, NOME, PMT, TELEFONE (e, se quiser, CONVENIO e DATA_NASCIMENTO). Os clientes entram direto na base escolhida.</p>
+      <div class="row">
+        <div class="field"><label>Base de destino</label><select id="impBase"></select></div>
+        <div class="field"><label>Arquivo CSV</label><input type="file" id="impArquivo" accept=".csv"></div>
+      </div>
+      <label class="hint" style="display:block; margin:6px 0 10px;">
+        <input type="checkbox" id="impMover" style="width:16px; height:16px; vertical-align:middle;">
+        Se o CPF já existir em outra base e ainda estiver livre (sem operador), <strong>mover</strong> para esta base
+      </label>
+      <button class="btn" id="btnImportarBase">Importar</button>
+      <div class="error-msg" id="erroImportBase"></div>
+    </div>
+  </div>
+
+  <!-- Modal criar/editar base -->
+  <div class="modal-overlay hidden" id="modalBase">
+    <div class="modal" style="max-width:560px;">
+      <button class="modal-close" onclick="fecharModalBase()">&times;</button>
+      <h3 id="modalBaseTitulo">Nova base</h3>
+      <div class="field"><label>Nome da base *</label><input type="text" id="mbNome" placeholder="Ex: Mailing Outubro — SPPREV"></div>
+      <div class="field"><label>Descrição (o operador vê)</label><input type="text" id="mbDescricao" placeholder="Ex: Clientes com margem livre, alta chance de fechamento"></div>
+      <label style="display:block; margin:8px 0;"><input type="checkbox" id="mbExclusiva" style="width:16px; height:16px; vertical-align:middle;"> Base <strong>exclusiva</strong> (só os operadores marcados abaixo)</label>
+      <label style="display:block; margin:8px 0;"><input type="checkbox" id="mbAtiva" checked style="width:16px; height:16px; vertical-align:middle;"> Base ativa (desmarque para pausar o sorteio dela)</label>
+      <p class="hint" style="margin-bottom:4px;">Operadores com acesso (vale só se a base for exclusiva):</p>
+      <div class="mod-ops" id="mbOperadores"></div>
+      <div class="error-msg" id="erroModalBase"></div>
+      <div style="display:flex; gap:10px;">
+        <button class="btn" id="btnSalvarBase">Salvar</button>
+        <button class="btn secondary" onclick="fecharModalBase()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+    let PERFIL = null;
+    let CONSULTORES = [];
+    let BASES = [];
+    let ACESSOS = {};
+    let CONTAGENS = {};
+    let EDITANDO_ID = null;
+
+    const esc = (t) => String(t ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+
+    async function carregar() {
+      const [{ data: cons }, { data: bases }, { data: acc }] = await Promise.all([
+        supabaseClient.from("profiles").select("id, nome, ativo").eq("role", "consultor").order("nome"),
+        supabaseClient.from("bases").select("*").order("id"),
+        supabaseClient.from("base_operadores").select("base_id, consultor_id"),
+      ]);
+      CONSULTORES = cons || [];
+      BASES = bases || [];
+      ACESSOS = {};
+      (acc || []).forEach((a) => { (ACESSOS[a.base_id] = ACESSOS[a.base_id] || []).push(a.consultor_id); });
+
+      await Promise.all(BASES.map(async (b) => {
+        const contar = (filtro) => filtro(supabaseClient.from("leads").select("id", { count: "exact", head: true }).eq("base_id", b.id));
+        const [disp, and, tab, tot] = await Promise.all([
+          contar((q) => q.eq("status", "novo").is("atribuido_a", null)),
+          contar((q) => q.eq("status", "em_andamento")),
+          contar((q) => q.eq("status", "tabulado")),
+          contar((q) => q),
+        ]);
+        CONTAGENS[b.id] = { disp: disp.count || 0, and: and.count || 0, tab: tab.count || 0, tot: tot.count || 0 };
+      }));
+
+      render();
+      popularSelectImportacao();
+    }
+
+    function render() {
+      const tbody = document.getElementById("tbodyBases");
+      if (BASES.length === 0) { tbody.innerHTML = `<tr><td colspan="9" style="color:var(--muted);">Nenhuma base cadastrada. Rode o SQL das bases primeiro.</td></tr>`; return; }
+      tbody.innerHTML = BASES.map((b) => {
+        const c = CONTAGENS[b.id] || { disp: 0, and: 0, tab: 0, tot: 0 };
+        const ops = (ACESSOS[b.id] || []).map((id) => (CONSULTORES.find((x) => x.id === id) || {}).nome).filter(Boolean);
+        const opsTxt = b.exclusiva ? (ops.length ? ops.map(esc).join(", ") : `<span style="color:var(--danger);">ninguém (ninguém sorteia nessa base)</span>`) : `<span class="hint">todos os operadores</span>`;
+        const podeExcluir = c.tot === 0 && b.nome !== "Base geral";
+        return `<tr>
+          <td><strong>${esc(b.nome)}</strong>${b.descricao ? `<div class="hint">${esc(b.descricao)}</div>` : ""}</td>
+          <td>${b.exclusiva ? '<span class="tag-excl">⭐ Exclusiva</span>' : '<span class="tag-aberta">Aberta</span>'}</td>
+          <td class="ops-lista">${opsTxt}</td>
+          <td><strong>${c.disp}</strong></td>
+          <td>${c.and}</td>
+          <td>${c.tab}</td>
+          <td>${c.tot}</td>
+          <td>${b.ativa ? '<span class="badge tabulado">Ativa</span>' : '<span class="badge novo">Pausada</span>'}</td>
+          <td style="white-space:nowrap;">
+            <button class="btn secondary" style="padding:4px 10px; font-size:12px;" onclick="abrirModalBase(${b.id})">Editar</button>
+            <button class="btn secondary" style="padding:4px 10px; font-size:12px;" onclick="prepararImportacao(${b.id})">Importar</button>
+            ${podeExcluir ? `<button class="btn secondary" style="padding:4px 10px; font-size:12px; color:var(--danger); border-color:var(--danger);" onclick="excluirBase(${b.id})">Excluir</button>` : ""}
+          </td>
+        </tr>`;
+      }).join("");
+    }
+
+    // ---------- Criar / editar ----------
+    function abrirModalBase(id) {
+      EDITANDO_ID = id || null;
+      const b = id ? BASES.find((x) => x.id === id) : null;
+      document.getElementById("modalBaseTitulo").textContent = b ? "Editar base" : "Nova base";
+      document.getElementById("mbNome").value = b ? b.nome : "";
+      document.getElementById("mbDescricao").value = b ? (b.descricao || "") : "";
+      document.getElementById("mbExclusiva").checked = b ? b.exclusiva : true;
+      document.getElementById("mbAtiva").checked = b ? b.ativa : true;
+      const marcados = b ? (ACESSOS[b.id] || []) : [];
+      document.getElementById("mbOperadores").innerHTML = CONSULTORES.map((c) =>
+        `<label><input type="checkbox" class="mod-op" value="${c.id}" ${marcados.includes(c.id) ? "checked" : ""}> ${esc(c.nome)}${c.ativo ? "" : " (inativo)"}</label>`).join("")
+        || `<span class="hint">Nenhum operador cadastrado.</span>`;
+      document.getElementById("erroModalBase").textContent = "";
+      document.getElementById("modalBase").classList.remove("hidden");
+    }
+    function fecharModalBase() { document.getElementById("modalBase").classList.add("hidden"); }
+    document.getElementById("btnNovaBase").addEventListener("click", () => abrirModalBase(null));
+
+    document.getElementById("btnSalvarBase").addEventListener("click", async () => {
+      const erroEl = document.getElementById("erroModalBase");
+      erroEl.textContent = "";
+      const nome = document.getElementById("mbNome").value.trim();
+      if (!nome) { erroEl.textContent = "Informe o nome da base."; return; }
+      const exclusiva = document.getElementById("mbExclusiva").checked;
+      const selecionados = [...document.querySelectorAll(".mod-op:checked")].map((c) => c.value);
+      if (exclusiva && selecionados.length === 0 && !confirm("Base exclusiva sem nenhum operador marcado: ninguém vai conseguir sortear nela. Salvar mesmo assim?")) return;
+
+      const payload = { nome, descricao: document.getElementById("mbDescricao").value.trim() || null, exclusiva, ativa: document.getElementById("mbAtiva").checked };
+      const btn = document.getElementById("btnSalvarBase");
+      btn.disabled = true;
+
+      let baseId = EDITANDO_ID;
+      let error;
+      if (baseId) {
+        ({ error } = await supabaseClient.from("bases").update(payload).eq("id", baseId));
+      } else {
+        const r = await supabaseClient.from("bases").insert(payload).select().single();
+        error = r.error;
+        baseId = r.data ? r.data.id : null;
+      }
+      if (error) {
+        btn.disabled = false;
+        erroEl.textContent = /duplicate|unique/i.test(error.message) ? "Já existe uma base com esse nome." : "Erro ao salvar: " + error.message;
+        return;
+      }
+
+      const { error: e1 } = await supabaseClient.from("base_operadores").delete().eq("base_id", baseId);
+      let e2 = null;
+      if (!e1 && selecionados.length) {
+        ({ error: e2 } = await supabaseClient.from("base_operadores").insert(selecionados.map((id) => ({ base_id: baseId, consultor_id: id }))));
+      }
+      btn.disabled = false;
+      if (e1 || e2) { erroEl.textContent = "Base salva, mas deu erro nos operadores: " + (e1 || e2).message; return; }
+
+      fecharModalBase();
+      await carregar();
+    });
+
+    async function excluirBase(id) {
+      const b = BASES.find((x) => x.id === id);
+      if (!b || !confirm(`Excluir a base "${b.nome}"? Ela está vazia.`)) return;
+      const { error } = await supabaseClient.from("bases").delete().eq("id", id);
+      if (error) { document.getElementById("erroBases").textContent = "Erro ao excluir: " + error.message; return; }
+      carregar();
+    }
+
+    // ---------- Importar ----------
+    function popularSelectImportacao() {
+      const sel = document.getElementById("impBase");
+      const atual = sel.value;
+      sel.innerHTML = BASES.map((b) => `<option value="${b.id}">${esc(b.nome)}${b.exclusiva ? " ⭐" : ""}</option>`).join("");
+      if (atual) sel.value = atual;
+    }
+    function prepararImportacao(id) {
+      document.getElementById("impBase").value = String(id);
+      document.getElementById("cardImportar").scrollIntoView({ behavior: "smooth" });
+    }
+
+    document.getElementById("btnImportarBase").addEventListener("click", async () => {
+      const erroEl = document.getElementById("erroImportBase");
+      erroEl.style.color = "";
+      erroEl.textContent = "";
+      const baseId = parseInt(document.getElementById("impBase").value, 10);
+      const input = document.getElementById("impArquivo");
+      if (!baseId) { erroEl.textContent = "Escolha a base de destino."; return; }
+      if (!input.files || input.files.length === 0) { erroEl.textContent = "Selecione um arquivo CSV."; return; }
+      const base = BASES.find((b) => b.id === baseId);
+      const mover = document.getElementById("impMover").checked;
+
+      const btn = document.getElementById("btnImportarBase");
+      btn.disabled = true; btn.textContent = "Importando...";
+
+      try {
+        const leads = parseLeadsCSV(await input.files[0].text());
+        if (leads.length === 0) throw new Error("Nenhum cliente válido encontrado no arquivo.");
+
+        // reconhece o convênio pelos cadastrados em Coeficientes; o que não bater vira "OUTRO"
+        const { data: coefs } = await supabaseClient.from("coeficientes").select("convenio");
+        const cadastrados = {};
+        (coefs || []).forEach((c) => { cadastrados[normalizarCabecalho(c.convenio)] = c.convenio; });
+        const naoReconhecidos = new Set();
+        leads.forEach((l) => {
+          if (l.convenio) {
+            const achado = cadastrados[normalizarCabecalho(l.convenio)];
+            if (achado) l.convenio = achado; else { naoReconhecidos.add(l.convenio); l.convenio = "OUTRO"; }
+          }
+          l.base_id = baseId;
+        });
+
+        const inseridosCpf = new Set();
+        for (let i = 0; i < leads.length; i += 500) {
+          const { data, error } = await supabaseClient.from("leads")
+            .upsert(leads.slice(i, i + 500), { onConflict: "cpf", ignoreDuplicates: true })
+            .select("id, cpf");
+          if (error) throw error;
+          (data || []).forEach((r) => inseridosCpf.add(r.cpf));
+        }
+        const duplicados = leads.filter((l) => !inseridosCpf.has(l.cpf));
+
+        let movidos = 0;
+        if (mover && duplicados.length > 0) {
+          const cpfs = duplicados.map((l) => l.cpf);
+          for (let i = 0; i < cpfs.length; i += 200) {
+            const { data, error } = await supabaseClient.from("leads")
+              .update({ base_id: baseId })
+              .in("cpf", cpfs.slice(i, i + 200))
+              .eq("status", "novo").is("atribuido_a", null)
+              .or(`base_id.is.null,base_id.neq.${baseId}`)
+              .select("id");
+            if (error) throw error;
+            movidos += (data || []).length;
+          }
+        }
+
+        input.value = "";
+        erroEl.style.color = "var(--success)";
+        erroEl.textContent = `${inseridosCpf.size} cliente(s) novo(s) importado(s) para "${base.nome}".`;
+        if (duplicados.length > 0) {
+          erroEl.textContent += ` ${duplicados.length} CPF(s) já existiam na base de dados`;
+          erroEl.textContent += mover ? ` — ${movidos} que ainda estavam livres foram movidos para esta base.` : " (ficaram onde estavam; marque a opção de mover se quiser trazê-los).";
+        }
+        if (naoReconhecidos.size > 0) {
+          erroEl.textContent += ` Convênio(s) não reconhecido(s), importados como "Outro": ${[...naoReconhecidos].slice(0, 8).join(", ")}${naoReconhecidos.size > 8 ? "…" : ""}.`;
+        }
+        await carregar();
+      } catch (e) {
+        erroEl.style.color = "var(--danger)";
+        erroEl.textContent = "Erro ao importar: " + e.message;
+      }
+      btn.disabled = false; btn.textContent = "Importar";
+    });
+
+    (async () => {
+      const auth = await exigirLogin("admin");
+      if (!auth) return;
+      PERFIL = auth.profile;
+      document.getElementById("whoami").textContent = PERFIL.nome;
+      carregar();
+    })();
+  </script>
+</body>
+</html>
