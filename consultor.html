@@ -21,6 +21,7 @@
       <div class="sidebar-item ativo" data-pagina="sorteio" onclick="mudarPagina('sorteio')">🎲 Sorteio</div>
       <div class="sidebar-item" data-pagina="contratos" onclick="mudarPagina('contratos')">📄 Contratos</div>
       <div class="sidebar-item" data-pagina="roteiros" onclick="mudarPagina('roteiros')">📜 Roteiros</div>
+      <div class="sidebar-item" data-pagina="novo-cliente" onclick="mudarPagina('novo-cliente')">➕ Cliente fora da base</div>
 
       <div class="sidebar-busca">
         <label>Buscar cliente (CPF)</label>
@@ -109,6 +110,28 @@
           </div>
         </div>
 
+        <!-- ===== PÁGINA: CLIENTE FORA DA BASE ===== -->
+        <div class="page-panel" id="page-novo-cliente">
+          <h1>Cliente fora da base</h1>
+          <p class="subtitle">Cadastre um cliente que não veio da base de sorteio. Depois de salvar, você já cai na tela de simulação dele.</p>
+          <div class="card">
+            <div class="row">
+              <div class="field" style="flex:2;"><label>Nome completo *</label><input type="text" id="ncNome"></div>
+              <div class="field"><label>CPF *</label><input type="text" id="ncCpf" placeholder="Só números" maxlength="14"></div>
+            </div>
+            <div class="row">
+              <div class="field"><label>Data de nascimento</label><input type="date" id="ncNascimento"></div>
+              <div class="field"><label>Telefone</label><input type="text" id="ncTelefone" placeholder="(11) 90000-0000"></div>
+            </div>
+            <div class="row">
+              <div class="field"><label>Convênio</label><select id="ncConvenio"></select></div>
+              <div class="field"><label>PMT / parcela atual (opcional)</label><input type="number" step="0.01" id="ncPmt" placeholder="0,00"></div>
+            </div>
+            <button class="btn" id="btnCadastrarNovo">Cadastrar e simular</button>
+            <div class="error-msg" id="erroNovoCliente"></div>
+          </div>
+        </div>
+
         <!-- ===== PÁGINA: ROTEIROS ===== -->
         <div class="page-panel" id="page-roteiros">
           <h1>Roteiros operacionais</h1>
@@ -135,6 +158,7 @@
       document.querySelectorAll(".page-panel").forEach((el) => el.classList.toggle("ativa", el.id === "page-" + nome));
       if (nome === "contratos" && CONTRATOS_CACHE.length === 0) carregarContratos();
       if (nome === "roteiros" && ROTEIROS_CACHE.length === 0) carregarRoteiros();
+      if (nome === "novo-cliente") carregarConveniosNovo();
     }
 
     async function carregarRoteiros() {
@@ -161,6 +185,43 @@
       if (error || !data) { alert("Não foi possível abrir o roteiro: " + (error ? error.message : "")); return; }
       window.open(data.signedUrl, "_blank");
     }
+
+    // ---------- Cliente fora da base ----------
+    let CONVENIOS_NOVO_OK = false;
+    async function carregarConveniosNovo() {
+      if (CONVENIOS_NOVO_OK) return;
+      const sel = document.getElementById("ncConvenio");
+      const { data } = await supabaseClient.from("coeficientes").select("convenio");
+      const lista = [...new Set((data || []).map((c) => c.convenio))].sort();
+      sel.innerHTML = `<option value="">Selecione...</option>` + lista.map((c) => `<option value="${c}">${c}</option>`).join("") + `<option value="OUTRO">Outro (sem tabela cadastrada)</option>`;
+      CONVENIOS_NOVO_OK = true;
+    }
+
+    document.getElementById("btnCadastrarNovo").addEventListener("click", async () => {
+      const erroEl = document.getElementById("erroNovoCliente");
+      erroEl.textContent = "";
+      const nome = document.getElementById("ncNome").value.trim();
+      const cpf = document.getElementById("ncCpf").value.replace(/\D/g, "");
+      if (!nome) { erroEl.textContent = "Informe o nome do cliente."; return; }
+      if (cpf.length !== 11) { erroEl.textContent = "O CPF precisa ter 11 números."; return; }
+
+      const pmt = parseFloat(document.getElementById("ncPmt").value);
+      const btn = document.getElementById("btnCadastrarNovo");
+      btn.disabled = true; btn.textContent = "Cadastrando...";
+
+      const { data, error } = await supabaseClient.rpc("cadastrar_cliente_manual", {
+        p_nome: nome,
+        p_cpf: cpf,
+        p_telefone: document.getElementById("ncTelefone").value.trim() || null,
+        p_convenio: document.getElementById("ncConvenio").value || "OUTRO",
+        p_pmt: Number.isNaN(pmt) ? null : pmt,
+        p_data_nascimento: document.getElementById("ncNascimento").value || null,
+      });
+
+      btn.disabled = false; btn.textContent = "Cadastrar e simular";
+      if (error) { erroEl.textContent = error.message; return; }
+      window.location.href = `cliente.html?id=${data.id}`;
+    });
 
     async function carregarLeads() {
       const { data, error } = await supabaseClient
