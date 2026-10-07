@@ -236,12 +236,12 @@
 
       <div class="finalizar-bloco">
         <h3 style="color:var(--gold-soft);">🔁 Ainda não fechou</h3>
-        <p class="hint" style="margin-top:0;">Fica com você (não volta pra fila). Se passar de 3 dias sem novo contato, aparece pro admin liberar.</p>
+        <p class="hint" style="margin-top:0;"><strong>Vai pensar</strong> e <strong>Reagendar</strong> ficam com você (se passar de 3 dias sem novo contato, aparece pro admin liberar). <strong>Não atende</strong> devolve o cliente para o fim da fila. <strong>Sem interesse, recusou e número errado</strong> encerram o cliente.</p>
         <div class="field">
           <label>Resultado do contato</label>
           <select id="resultado">
             <option value="">Selecione...</option>
-            <option value="nao_atende">Não atende</option>
+            <option value="nao_atende">Não atende (volta pra fila)</option>
             <option value="vai_pensar">Vai pensar</option>
             <option value="reagendar">Reagendar</option>
             <option value="sem_interesse">Sem interesse (sai da base)</option>
@@ -681,12 +681,17 @@
 
       statusEl.style.color = "var(--muted)"; statusEl.textContent = "Salvando...";
       // o banco só aceita tabulação pela função registrar_tabulacao (ela também cuida do status e da fila do cliente)
-      const { error } = await supabaseClient.rpc("registrar_tabulacao", {
+      const { data: situacao, error } = await supabaseClient.rpc("registrar_tabulacao", {
         p_lead_id: LEAD.id, p_resultado: resultado, p_observacao: observacao || null, p_reagendado_para: reagendadoPara,
       });
       if (error) { statusEl.style.color = "var(--danger)"; statusEl.textContent = "Erro: " + error.message; return; }
 
-      statusEl.style.color = "var(--success)"; statusEl.textContent = "Tabulação registrada.";
+      const MSG_SITUACAO = {
+        liberado: "Cliente não localizado: devolvido ao fim da fila.",
+        tabulado: "Cliente encerrado.",
+        em_andamento: "Tabulação registrada. O cliente continua com você.",
+      };
+      statusEl.style.color = "var(--success)"; statusEl.textContent = MSG_SITUACAO[situacao] || "Tabulação registrada.";
       document.getElementById("resultado").value = "";
       document.getElementById("observacao").value = "";
       document.getElementById("reagendadoPara").value = "";
