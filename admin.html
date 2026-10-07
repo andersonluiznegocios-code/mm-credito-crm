@@ -103,34 +103,37 @@
         <!-- ===== PÁGINA: CONTRATOS ===== -->
         <div class="page-panel" id="page-contratos">
           <h1>Contratos (espelho do CredBase)</h1>
-          <p class="subtitle">Importe a planilha de contratos exportada do CredBase/FUNÇÃO pra acompanhar a esteira operacional aqui dentro.</p>
+          <p class="subtitle">Importe a planilha de contratos exportada do CredBase/FUNÇÃO e acompanhe a esteira aqui, com os mesmos filtros da tela de Contratos de lá.</p>
 
           <div class="card">
-            <p class="hint" style="margin-top:0;">Aceita .xlsx ou .csv exportado da tela de Contratos do CredBase. O consultor é identificado pelo nome completo no campo "Vendedor" — se não encontrar um consultor com esse nome, o contrato fica sem consultor atribuído (só o admin vê).</p>
+            <p class="hint" style="margin-top:0;">Aceita .xlsx ou .csv exportado da tela de Contratos do CredBase. O consultor é identificado pelo nome completo no campo "Vendedor" — se não encontrar um consultor com esse nome, o contrato fica sem consultor atribuído (só o admin vê). Contratos já existentes (mesmo Nº) são atualizados, não duplicados.</p>
             <input type="file" id="arquivoContratos" accept=".csv,.xlsx,.xls">
             <button class="btn" id="btnImportarContratos" style="margin-left:10px;">Importar planilha</button>
             <div class="error-msg" id="erroImportContratos"></div>
           </div>
 
+          <div id="cfPainelAdm"></div>
+
           <div class="card">
-            <div class="row" style="margin-bottom:16px; align-items:center;">
-              <select id="filtroConsultorContrato">
-                <option value="">Todos os consultores</option>
-                <option value="__sem__">Sem consultor identificado</option>
-              </select>
-              <input type="text" id="buscaContratoAdmin" placeholder="Buscar por cliente, CPF ou nº do contrato...">
-              <label class="hint" style="white-space:nowrap;"><input type="checkbox" id="filtroSoPendencias" style="width:16px; height:16px; vertical-align:middle;"> Só com pendência</label>
-              <button class="btn secondary" id="btnExportarContratos">Baixar Excel</button>
+            <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:6px;">
+              <div class="hint" id="cfResumoAdm" style="margin:0;"></div>
+              <button class="btn secondary" id="btnExportarContratos" style="margin-left:auto;">Baixar Excel (filtro atual)</button>
             </div>
+            <div id="cfPagerAdmTopo"></div>
             <div class="table-wrap">
               <table>
                 <thead>
-                  <tr><th>Nº Contrato</th><th>Cliente</th><th>CPF</th><th>Consultor</th><th>Tipo</th><th>Situação</th><th>Esteira</th><th>Início</th><th>Convênio</th><th>Liberação</th><th>Produção</th><th>Parcela</th><th>Prazo</th><th>Tabela</th><th>Dívidas</th><th>Pend.</th><th>Atualizado</th></tr>
+                  <tr>
+                    <th>Nº Contrato</th><th>Código</th><th>Banco(s) quitado(s)</th><th>Esteira</th><th>Esteira (dias)</th><th>Tipo</th><th>Operação</th><th>Situação</th>
+                    <th>Início</th><th>Cliente</th><th>Data averbação</th><th>CPF</th><th>Vendedor / Consultor</th><th>Convênio</th><th>Banco</th>
+                    <th>Liberação</th><th>Produção</th><th>Total</th><th>Parcela</th><th>Prazo</th><th>Tabela</th><th>Comentários</th><th>Dívidas</th><th>Pend.</th><th>Atualizado</th>
+                  </tr>
                 </thead>
                 <tbody id="tbodyContratosAdmin"></tbody>
                 <tfoot id="tfootContratosAdmin"></tfoot>
               </table>
             </div>
+            <div id="cfPagerAdmRodape"></div>
           </div>
         </div>
 
@@ -556,6 +559,7 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="config.js"></script>
   <script src="app.js"></script>
+  <script src="contratos_filtros.js"></script>
   <script>
     let PERFIL = null;
     let CONSULTORES = [];
@@ -1104,7 +1108,7 @@
       if (!/\.pdf$/i.test(arq.name) || (arq.type && arq.type !== "application/pdf")) { erroEl.textContent = "O arquivo precisa ser um PDF."; return; }
       if (arq.size > 25 * 1024 * 1024) { erroEl.textContent = "O PDF passa de 25 MB."; return; }
       const slug = normalizarCabecalho(convenio).replace(/\s+/g, "-").toLowerCase() || "geral";
-      const nomeSeguro = arq.name.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Za-z0-9._-]+/g, "_");
+      const nomeSeguro = arq.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9._-]+/g, "_");
       const path = `${slug}/${Date.now()}-${nomeSeguro}`;
       const btn = document.getElementById("btnEnviarRoteiro"); btn.disabled = true; btn.textContent = "Enviando...";
       const { error: e1 } = await supabaseClient.storage.from("roteiros").upload(path, arq, { contentType: "application/pdf" });
@@ -1274,7 +1278,7 @@
         supabaseClient.from("documentos").select("*, leads(nome, cpf), profiles(nome)").order("criado_em", { ascending: false }).limit(LIMITE_DOCUMENTOS),
         supabaseClient.from("tabulacoes").select("lead_id, criado_em, leads!inner(status)").eq("leads.status", "em_andamento").order("criado_em", { ascending: false }),
         supabaseClient.from("sorteios").select("lead_id, sorteado_em, leads!inner(status)").eq("leads.status", "em_andamento"),
-        supabaseClient.from("contratos_credbase").select("*, profiles(nome)").order("atualizado_em", { ascending: false }),
+        buscarTudo("contratos_credbase", "*, profiles(nome)"),
       ]);
       CONSULTORES = consultores || [];
       LEADS = leads || [];
@@ -1745,6 +1749,7 @@
 
     document.getElementById("btnImportarContratos").addEventListener("click", async () => {
       const erroEl = document.getElementById("erroImportContratos");
+      erroEl.style.color = "";
       erroEl.textContent = "";
       const input = document.getElementById("arquivoContratos");
       if (!input.files || input.files.length === 0) { erroEl.textContent = "Selecione um arquivo .xlsx ou .csv."; return; }
@@ -1809,6 +1814,7 @@
 
         const semConsultor = contratosParaImportar.filter((c) => !c.consultor_id).length;
         input.value = "";
+        CONTRATOS_ALL = null; // Previsão e Cancelamentos passam a enxergar os contratos recém-importados
         await carregarTudo();
         erroEl.style.color = "var(--success)";
         erroEl.textContent = `${contratosParaImportar.length} contrato(s) importado(s)/atualizado(s).` +
@@ -1820,108 +1826,105 @@
       btn.disabled = false; btn.textContent = "Importar planilha";
     });
 
+    // ---------- Contratos: lista com os filtros do CredBase ----------
+    let PAGINA_ADM = 1;
+    let FILTRADOS_ADM = [];
+    const FILTRO_ADM = ContratosFiltros.montar(document.getElementById("cfPainelAdm"), {
+      prefixo: "adm", admin: true,
+      aoMudar: (voltarPrimeira) => { if (voltarPrimeira) PAGINA_ADM = 1; renderContratosAdmin(); },
+    });
+
     async function carregarContratos() {
-      const tbody = document.getElementById("tbodyContratosAdmin");
-      tbody.innerHTML = `<tr><td colspan="17" style="color:var(--muted);">Carregando...</td></tr>`;
-      const { data, error } = await supabaseClient
-        .from("contratos_credbase").select("*, profiles(nome)").order("atualizado_em", { ascending: false });
-      if (error) { tbody.innerHTML = `<tr><td colspan="17" style="color:var(--muted);">Erro ao carregar contratos.</td></tr>`; return; }
+      const { data } = await buscarTudo("contratos_credbase", "*, profiles(nome)");
       CONTRATOS = data || [];
+      popularFiltroConsultorContrato();
       renderContratosAdmin();
     }
 
+    // preenche as opções dos filtros (consultores, bancos, tipos, convênios, tabelas) a partir dos dados carregados
     function popularFiltroConsultorContrato() {
-      const sel = document.getElementById("filtroConsultorContrato");
-      const atual = sel.value;
-      sel.innerHTML = `<option value="">Todos os consultores</option><option value="__sem__">Sem consultor identificado</option>` +
-        CONSULTORES.map((c) => `<option value="${c.id}">${c.nome}</option>`).join("");
-      sel.value = atual;
+      FILTRO_ADM.definirConsultores(CONSULTORES);
+      FILTRO_ADM.atualizarOpcoes(CONTRATOS);
     }
 
     function renderContratosAdmin() {
       const tbody = document.getElementById("tbodyContratosAdmin");
       const tfoot = document.getElementById("tfootContratosAdmin");
-      const busca = document.getElementById("buscaContratoAdmin").value.trim().toLowerCase();
-      const filtroConsultor = document.getElementById("filtroConsultorContrato").value;
-      const soPendencias = document.getElementById("filtroSoPendencias").checked;
+      FILTRADOS_ADM = FILTRO_ADM.filtrar(CONTRATOS);
+      const comPend = FILTRADOS_ADM.filter((c) => c.pendencias).length;
+      document.getElementById("cfResumoAdm").textContent =
+        `Do total de contratos encontrados (${FILTRADOS_ADM.length} de ${CONTRATOS.length}), ${comPend} possuem pendência(s).`;
 
-      const filtrados = CONTRATOS.filter((c) => {
-        if (filtroConsultor === "__sem__" && c.consultor_id) return false;
-        if (filtroConsultor && filtroConsultor !== "__sem__" && c.consultor_id !== filtroConsultor) return false;
-        if (soPendencias && !c.pendencias) return false;
-        if (busca && !((c.cliente_nome || "").toLowerCase().includes(busca) || (c.cpf || "").includes(busca) || (c.numero_contrato || "").toLowerCase().includes(busca))) return false;
-        return true;
-      });
-
-      if (filtrados.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="17" style="color:var(--muted);">Nenhum contrato encontrado. Importe a planilha do CredBase acima.</td></tr>`;
+      if (FILTRADOS_ADM.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="25" style="color:var(--muted);">Nenhum contrato encontrado com esses filtros. Importe a planilha do CredBase acima ou ajuste os filtros.</td></tr>`;
         tfoot.innerHTML = "";
+        document.getElementById("cfPagerAdmTopo").innerHTML = "";
+        document.getElementById("cfPagerAdmRodape").innerHTML = "";
         return;
       }
 
-      tbody.innerHTML = filtrados.map((c) => `
+      const info = ContratosFiltros.paginar(FILTRADOS_ADM, PAGINA_ADM);
+      PAGINA_ADM = info.pagina;
+      const esc = (t) => String(t ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;");
+      const dataBR = (d) => (d ? new Date(d + "T00:00:00").toLocaleDateString("pt-BR") : "-");
+      tbody.innerHTML = info.itens.map((c) => `
         <tr>
-          <td>${c.numero_contrato}</td>
-          <td>${c.cliente_nome || "-"}</td>
+          <td>${esc(c.numero_contrato)}</td>
+          <td>${esc(c.codigo) || "-"}</td>
+          <td>${esc(c.bancos_quitados) || "-"}</td>
+          <td>${esc(c.esteira) || "-"}</td>
+          <td>${c.esteira_dias ?? "-"}</td>
+          <td>${esc(c.tipo) || "-"}</td>
+          <td>${esc(c.operacao) || "-"}</td>
+          <td>${esc(c.situacao) || "-"}</td>
+          <td>${dataBR(c.data_inicio)}</td>
+          <td>${esc(c.cliente_nome) || "-"}</td>
+          <td>${esc(c.data_averbacao) || "-"}</td>
           <td>${c.cpf ? maskCPF(c.cpf) : "-"}</td>
-          <td>${c.profiles ? c.profiles.nome : '<span class="hint">não identificado</span>'}</td>
-          <td>${c.tipo || "-"}</td>
-          <td>${c.situacao || "-"}</td>
-          <td>${c.esteira || "-"}</td>
-          <td>${c.data_inicio ? new Date(c.data_inicio + "T00:00:00").toLocaleDateString("pt-BR") : "-"}</td>
-          <td>${c.convenio || "-"}</td>
+          <td>${c.profiles ? esc(c.profiles.nome) : `${esc(c.vendedor_nome) || "-"} <span class="hint">(não identificado)</span>`}</td>
+          <td>${esc(c.convenio) || "-"}</td>
+          <td>${esc(c.banco) || "-"}</td>
           <td>${formatBRL(c.liberacao)}</td>
           <td>${formatBRL(c.producao)}</td>
+          <td>${formatBRL(c.total)}</td>
           <td>${formatBRL(c.parcela)}</td>
           <td>${c.prazo || "-"}</td>
-          <td>${c.tabela || "-"}</td>
+          <td>${esc(c.tabela) || "-"}</td>
+          <td>${esc(c.comentarios) || "-"}</td>
           <td>${c.dividas ?? "-"}</td>
           <td>${c.pendencias ? '<span style="color:var(--danger); font-weight:bold;">⚠️ Sim</span>' : "-"}</td>
           <td>${new Date(c.atualizado_em).toLocaleDateString("pt-BR")}</td>
-        </tr>
-      `).join("");
+        </tr>`).join("");
 
-      const somaLiberacao = filtrados.filter(contratoConta).reduce((s, c) => s + (c.liberacao || 0), 0);
-      const somaProducao = filtrados.filter(contratoConta).reduce((s, c) => s + (c.producao || 0), 0);
-      const somaTotal = filtrados.filter(contratoConta).reduce((s, c) => s + (c.total || 0), 0);
+      // com "Cancelado" marcado nos filtros, os cancelados entram nas somas; senão ficam de fora
+      const incl = FILTRO_ADM.estado().situacoes.has("cancelado");
+      const soma = (lista, campo) => lista.filter((c) => incl || contratoConta(c)).reduce((t, c) => t + (c[campo] || 0), 0);
       tfoot.innerHTML = `
-        <tr>
-          <td colspan="10">Total (${filtrados.length} contrato${filtrados.length === 1 ? "" : "s"}; valores sem cancelados)</td>
-          <td>${formatBRL(somaLiberacao)}</td>
-          <td>${formatBRL(somaProducao)}</td>
-          <td colspan="5"></td>
-        </tr>
-      `;
+        <tr><td colspan="15">Total da listagem (esta página)</td><td>${formatBRL(soma(info.itens, "liberacao"))}</td><td>${formatBRL(soma(info.itens, "producao"))}</td><td>${formatBRL(soma(info.itens, "total"))}</td><td colspan="7"></td></tr>
+        <tr><td colspan="15">Total (todos os ${FILTRADOS_ADM.length} encontrados${incl ? "" : ", sem cancelados"})</td><td>${formatBRL(soma(FILTRADOS_ADM, "liberacao"))}</td><td>${formatBRL(soma(FILTRADOS_ADM, "producao"))}</td><td>${formatBRL(soma(FILTRADOS_ADM, "total"))}</td><td colspan="7"></td></tr>`;
+
+      const html = ContratosFiltros.pagerHtml(info);
+      ["cfPagerAdmTopo", "cfPagerAdmRodape"].forEach((id) => {
+        const el = document.getElementById(id);
+        el.innerHTML = html;
+        ContratosFiltros.ligarPager(el, (n) => { PAGINA_ADM = n; renderContratosAdmin(); document.getElementById("cfResumoAdm").scrollIntoView({ behavior: "smooth", block: "start" }); });
+      });
     }
-    document.getElementById("buscaContratoAdmin").addEventListener("input", renderContratosAdmin);
-    document.getElementById("filtroConsultorContrato").addEventListener("change", renderContratosAdmin);
-    document.getElementById("filtroSoPendencias").addEventListener("change", renderContratosAdmin);
 
     document.getElementById("btnExportarContratos").addEventListener("click", () => {
-      const busca = document.getElementById("buscaContratoAdmin").value.trim().toLowerCase();
-      const filtroConsultor = document.getElementById("filtroConsultorContrato").value;
-      const soPendencias = document.getElementById("filtroSoPendencias").checked;
-      const filtrados = CONTRATOS.filter((c) => {
-        if (filtroConsultor === "__sem__" && c.consultor_id) return false;
-        if (filtroConsultor && filtroConsultor !== "__sem__" && c.consultor_id !== filtroConsultor) return false;
-        if (soPendencias && !c.pendencias) return false;
-        if (busca && !((c.cliente_nome || "").toLowerCase().includes(busca) || (c.cpf || "").includes(busca) || (c.numero_contrato || "").toLowerCase().includes(busca))) return false;
-        return true;
-      });
-      const linhas = filtrados.map((c) => ({
-        "Nº Contrato": c.numero_contrato, "Cliente": c.cliente_nome, "CPF": c.cpf,
-        "Consultor": c.profiles ? c.profiles.nome : "não identificado",
-        "Tipo": c.tipo, "Situação": c.situacao, "Esteira": c.esteira,
-        "Início": c.data_inicio, "Convênio": c.convenio, "Banco": c.banco,
-        "Liberação": c.liberacao, "Produção": c.producao, "Total": c.total, "Parcela": c.parcela,
-        "Prazo": c.prazo, "Tabela": c.tabela, "Dívidas": c.dividas, "Pendências": c.pendencias ? "Sim" : "Não",
-        "Comentários": c.comentarios, "Atualizado em": new Date(c.atualizado_em).toLocaleString("pt-BR"),
+      const linhas = FILTRADOS_ADM.map((c) => ({
+        "Nº Contrato": c.numero_contrato, "Código": c.codigo, "Banco(s) quitado(s)": c.bancos_quitados, "Filial": c.filial,
+        "Esteira": c.esteira, "Esteira (dias)": c.esteira_dias, "Tipo": c.tipo, "Operação": c.operacao, "Situação": c.situacao,
+        "Início": c.data_inicio, "Cliente": c.cliente_nome, "Data averbação": c.data_averbacao, "CPF": c.cpf,
+        "Consultor": c.profiles ? c.profiles.nome : "não identificado", "Vendedor (planilha)": c.vendedor_nome,
+        "Convênio": c.convenio, "Banco": c.banco, "Liberação": c.liberacao, "Produção": c.producao, "Total": c.total,
+        "Parcela": c.parcela, "Prazo": c.prazo, "Tabela": c.tabela, "Comentários": c.comentarios, "Dívidas": c.dividas,
+        "Pendências": c.pendencias ? "Sim" : "Não", "Atualizado em": new Date(c.atualizado_em).toLocaleString("pt-BR"),
       }));
       const ws = XLSX.utils.json_to_sheet(linhas);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Contratos");
-      const dataStr = new Date().toISOString().slice(0, 10);
-      XLSX.writeFile(wb, `contratos_MM_Credito_${dataStr}.xlsx`);
+      XLSX.writeFile(wb, `contratos_MM_Credito_${new Date().toISOString().slice(0, 10)}.xlsx`);
     });
 
     // ---------- Exportar propostas ----------
