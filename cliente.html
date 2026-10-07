@@ -37,7 +37,7 @@
   </div>
 
   <div class="container">
-    <a href="consultor.html" id="linkVoltar" style="color:var(--gold-soft); text-decoration:none; font-size:13px;">&larr; Voltar para meus clientes</a>
+    <a href="consultor.html" style="color:var(--gold-soft); text-decoration:none; font-size:13px;">&larr; Voltar para meus clientes</a>
 
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-top:14px;">
       <h1 style="margin:0;" id="nomeCliente">Carregando...</h1>
@@ -45,7 +45,6 @@
     </div>
     <p class="subtitle">Status: <span class="badge" id="statusBadge"></span></p>
     <div class="error-msg" id="sairErro"></div>
-    <div id="avisoPendente" class="hidden" style="background:#3a2a10; border:1px solid var(--gold-soft); color:var(--gold-soft); padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:12px;">⚠ Você precisa TABULAR este cliente (ou finalizar a venda) antes de sair desta tela.</div>
 
     <!-- ===== DADOS DA BASE ===== -->
     <div class="card">
@@ -53,36 +52,10 @@
       <div class="lead-info" id="leadInfo"></div>
     </div>
 
-    <!-- ===== CONTATO: SIMULAR OU TABULAR ===== -->
-    <div class="card" id="secaoContato" style="display:none;">
-      <h2 style="margin-top:0;">Contato com o cliente</h2>
-      <p class="hint" style="margin-top:0;">Conseguiu falar com o cliente? Escolha uma opção para continuar. Você só sai desta tela depois de tabular.</p>
-      <div style="display:flex; gap:12px; flex-wrap:wrap;">
-        <button class="btn" id="btnEscolherSimular">🧮 SIMULAR (consegui contato)</button>
-        <button class="btn secondary" id="btnEscolherTabular">📞 TABULAR (não localizei / sem contato)</button>
-      </div>
-      <div id="painelTabularRapido" class="hidden" style="margin-top:16px;">
-        <div class="field">
-          <label>Resultado</label>
-          <select id="resultadoRapido">
-            <option value="">Selecione...</option>
-            <option value="nao_atende">Não localizei / não atende (libera e volta pro fim da fila)</option>
-            <option value="numero_errado">Número errado (sai da base)</option>
-            <option value="sem_interesse">Sem interesse (sai da base)</option>
-            <option value="recusou">Recusou (sai da base)</option>
-          </select>
-        </div>
-        <div class="field"><label>Observação (opcional)</label><textarea id="obsRapida" rows="2"></textarea><button type="button" class="btn secondary btn-mic" data-alvo="obsRapida" style="margin-top:6px;">🎤 Ditar observação</button></div>
-        <button class="btn" id="btnConfirmarTabRapida">Confirmar tabulação e buscar outro cliente</button>
-        <div class="hint" id="tabRapidaStatus"></div>
-      </div>
-    </div>
-
     <!-- ===== 1. SIMULAR ===== -->
     <div class="card" id="secaoSimular">
       <h2><span class="step-num">1</span> Simular proposta</h2>
-      <select id="simPrazo" disabled style="display:none;"></select>
-      <div class="hint" id="simPrazoAviso"></div>
+      <div class="field" style="max-width:200px;"><label>Prazo (meses)</label><select id="simPrazo"></select></div>
       <p class="hint">Cada linha abaixo tem seu próprio convênio e tabela — pode combinar convênios diferentes na mesma operação.</p>
 
       <h2 style="margin-top:20px;">Cartão de Crédito</h2>
@@ -91,14 +64,13 @@
         Agrupar amortização + margem em uma linha só (uma parcela)
       </label>
       <table class="tabela-sim">
-        <thead><tr><th></th><th>Credor</th><th>Dívida</th><th>Parcela</th><th>Prazo</th><th>Convênio / Tabela</th><th>Liberação</th><th>Contrato</th></tr></thead>
+        <thead><tr><th></th><th>Credor</th><th>Dívida</th><th>Parcela</th><th>Convênio / Tabela</th><th>Liberação</th><th>Contrato</th></tr></thead>
         <tbody>
           <tr>
             <td><input type="checkbox" class="sim-incluir" data-produto="cartao_credito" data-tipo="amortizacao"></td>
             <td><input type="text" class="sim-credor" placeholder="Ex: BMG" data-produto="cartao_credito" data-tipo="amortizacao"></td>
             <td><input type="number" step="0.01" class="sim-divida" value="0" data-produto="cartao_credito" data-tipo="amortizacao"></td>
             <td><input type="number" step="0.01" class="sim-parcela" value="0" data-produto="cartao_credito" data-tipo="amortizacao"></td>
-            <td class="sim-prazo" style="white-space:nowrap;">-</td>
             <td>
               <select class="sim-convenio" data-produto="cartao_credito" data-tipo="amortizacao"></select>
               <select class="sim-tabela" data-produto="cartao_credito" data-tipo="amortizacao"></select>
@@ -111,7 +83,6 @@
             <td class="hint">Margem nova</td>
             <td class="hint">-</td>
             <td><input type="number" step="0.01" class="sim-parcela" value="0" data-produto="cartao_credito" data-tipo="margem"></td>
-            <td class="sim-prazo" style="white-space:nowrap;">-</td>
             <td>
               <select class="sim-convenio" data-produto="cartao_credito" data-tipo="margem"></select>
               <select class="sim-tabela" data-produto="cartao_credito" data-tipo="margem"></select>
@@ -129,14 +100,13 @@
         Agrupar amortização + margem em uma linha só (uma parcela)
       </label>
       <table class="tabela-sim">
-        <thead><tr><th></th><th>Credor</th><th>Dívida</th><th>Parcela</th><th>Prazo</th><th>Convênio / Tabela</th><th>Liberação</th><th>Contrato</th></tr></thead>
+        <thead><tr><th></th><th>Credor</th><th>Dívida</th><th>Parcela</th><th>Convênio / Tabela</th><th>Liberação</th><th>Contrato</th></tr></thead>
         <tbody>
           <tr>
             <td><input type="checkbox" class="sim-incluir" data-produto="cartao_beneficio" data-tipo="amortizacao"></td>
             <td><input type="text" class="sim-credor" placeholder="Ex: BMG" data-produto="cartao_beneficio" data-tipo="amortizacao"></td>
             <td><input type="number" step="0.01" class="sim-divida" value="0" data-produto="cartao_beneficio" data-tipo="amortizacao"></td>
             <td><input type="number" step="0.01" class="sim-parcela" value="0" data-produto="cartao_beneficio" data-tipo="amortizacao"></td>
-            <td class="sim-prazo" style="white-space:nowrap;">-</td>
             <td>
               <select class="sim-convenio" data-produto="cartao_beneficio" data-tipo="amortizacao"></select>
               <select class="sim-tabela" data-produto="cartao_beneficio" data-tipo="amortizacao"></select>
@@ -149,7 +119,6 @@
             <td class="hint">Margem nova</td>
             <td class="hint">-</td>
             <td><input type="number" step="0.01" class="sim-parcela" value="0" data-produto="cartao_beneficio" data-tipo="margem"></td>
-            <td class="sim-prazo" style="white-space:nowrap;">-</td>
             <td>
               <select class="sim-convenio" data-produto="cartao_beneficio" data-tipo="margem"></select>
               <select class="sim-tabela" data-produto="cartao_beneficio" data-tipo="margem"></select>
@@ -161,17 +130,14 @@
       </table>
       <p class="hint" id="resumoAgrupamento_cartao_beneficio"></p>
 
-      <!-- Empréstimo Consignável oculto: ainda não há tabela. Para voltar, remova display:none. -->
-      <div id="blocoEmprestimo" style="display:none;">
       <h2 style="margin-top:20px;">Empréstimo Consignável</h2>
       <table class="tabela-sim">
-        <thead><tr><th></th><th>Dívida</th><th>Parcela</th><th>Prazo</th><th>Convênio / Tabela</th><th>Liberação</th><th>Contrato</th></tr></thead>
+        <thead><tr><th></th><th>Dívida</th><th>Parcela</th><th>Convênio / Tabela</th><th>Liberação</th><th>Contrato</th></tr></thead>
         <tbody>
           <tr>
             <td><input type="checkbox" class="sim-incluir" data-produto="emprestimo" data-tipo="margem"></td>
             <td><input type="number" step="0.01" class="sim-divida" value="0" data-produto="emprestimo" data-tipo="margem"></td>
             <td><input type="number" step="0.01" class="sim-parcela" value="0" data-produto="emprestimo" data-tipo="margem"></td>
-            <td class="sim-prazo" style="white-space:nowrap;">-</td>
             <td>
               <select class="sim-convenio" data-produto="emprestimo" data-tipo="margem"></select>
               <select class="sim-tabela" data-produto="emprestimo" data-tipo="margem"></select>
@@ -181,12 +147,11 @@
           </tr>
         </tbody>
       </table>
-      </div>
 
       <div class="resumo-simulacao" style="margin-top:20px;">
         <div><span class="lbl">Liberação Cartão de Crédito</span> <span id="totCC">R$ 0,00</span></div>
         <div><span class="lbl">Liberação Cartão Benefício</span> <span id="totCB">R$ 0,00</span></div>
-        <div style="display:none;"><span class="lbl">Empréstimo Consignável</span> <span id="totEMP">R$ 0,00</span></div>
+        <div><span class="lbl">Empréstimo Consignável</span> <span id="totEMP">R$ 0,00</span></div>
         <div style="margin-top:8px; font-size:18px;"><span class="lbl">Total Operação</span> <strong id="totGeral" style="color:var(--gold-soft);">R$ 0,00</strong></div>
       </div>
 
@@ -270,11 +235,12 @@
 
       <div class="finalizar-bloco">
         <h3 style="color:var(--gold-soft);">🔁 Ainda não fechou</h3>
-        <p class="hint" style="margin-top:0;">Falou com o cliente e ele vai pensar/reagendar: fica com você.</p>
+        <p class="hint" style="margin-top:0;">Fica com você (não volta pra fila). Se passar de 3 dias sem novo contato, aparece pro admin liberar.</p>
         <div class="field">
           <label>Resultado do contato</label>
           <select id="resultado">
             <option value="">Selecione...</option>
+            <option value="nao_atende">Não atende</option>
             <option value="vai_pensar">Vai pensar</option>
             <option value="reagendar">Reagendar</option>
             <option value="sem_interesse">Sem interesse (sai da base)</option>
@@ -286,7 +252,7 @@
           <label>Reagendar para</label>
           <input type="datetime-local" id="reagendadoPara">
         </div>
-        <div class="field"><label>Observação (opcional)</label><textarea id="observacao" rows="2"></textarea><button type="button" class="btn secondary btn-mic" data-alvo="observacao" style="margin-top:6px;">🎤 Ditar observação</button></div>
+        <div class="field"><label>Observação (opcional)</label><textarea id="observacao" rows="2"></textarea></div>
         <button class="btn secondary" id="btnSalvarTabulacao">Tabular como NEGOCIAÇÃO</button>
         <div class="hint" id="tabulacaoStatus"></div>
       </div>
@@ -301,53 +267,6 @@
     </div>
 
     <!-- ===== PESSOAS RELACIONADAS ===== -->
-    <!-- ===== CHECKLIST DE DOCUMENTOS ===== -->
-    <div class="card" id="secaoChecklist">
-      <h2 style="margin-top:0;">Checklist de documentos</h2>
-      <p class="hint" style="margin-top:0;">Marque o que já foi recebido do cliente. O que falta aparece em destaque.</p>
-      <div id="listaChecklist"></div>
-      <div class="hint" id="resumoChecklist" style="margin-top:8px;"></div>
-    </div>
-
-    <!-- ===== BOLETOS DE QUITAÇÃO ===== -->
-    <div class="card" id="secaoBoletos">
-      <h2 style="margin-top:0;">Boletos de quitação</h2>
-      <p class="hint" style="margin-top:0;">Registre como o boleto foi pedido. O sistema calcula o prazo e avisa quando atrasar.</p>
-      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px;">
-        <div class="field"><label>Forma</label>
-          <select id="bolForma">
-            <option value="contato_interno">Contato interno PKL/Master (2 dias úteis)</option>
-            <option value="procuracao">Procuração em cartório (5 dias úteis)</option>
-            <option value="bacen">Bacen (10 dias úteis)</option>
-            <option value="consumidor">Consumidor (10 dias corridos)</option>
-          </select></div>
-        <div class="field"><label>Banco</label><input type="text" id="bolBanco" placeholder="Ex: Master"></div>
-        <div class="field"><label>Nº do contrato</label><input type="text" id="bolContrato"></div>
-        <div class="field"><label>Data do pedido</label><input type="date" id="bolData"></div>
-      </div>
-      <div class="field"><label>Observação (opcional)</label><input type="text" id="bolObs"></div>
-      <button class="btn" id="btnRegistrarBoleto">Registrar pedido</button>
-      <div class="hint" id="bolStatus"></div>
-      <div class="table-wrap" style="margin-top:14px;">
-        <table>
-          <thead><tr><th>Forma</th><th>Banco / contrato</th><th>Pedido</th><th>Vencimento</th><th>Situação</th><th></th></tr></thead>
-          <tbody id="tbodyBoletos"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- ===== HISTÓRICO DO CLIENTE ===== -->
-    <div class="card" id="secaoHistorico">
-      <h2 style="margin-top:0;">Histórico do cliente</h2>
-      <p class="hint" style="margin-top:0;">Quem atendeu, o que foi tabulado e quando.</p>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Data</th><th>Operador</th><th>Evento</th><th>Detalhe</th></tr></thead>
-          <tbody id="tbodyHistorico"></tbody>
-        </table>
-      </div>
-    </div>
-
     <div class="card" id="secaoRelacionadas">
       <h2 style="margin-top:0;">Pessoas relacionadas</h2>
       <p class="hint" style="margin-top:0;">Referências do cliente — parente, contato de recado, etc.</p>
@@ -386,61 +305,15 @@
     let ULTIMOS_ITENS = [];
     let DOCUMENTOS = [];
     let COEFICIENTES = {};
-    let PRAZOS = {};
 
     async function carregarCoeficientes() {
       const { data, error } = await supabaseClient.from("coeficientes").select("*");
       if (error || !data) return;
       COEFICIENTES = {};
-      PRAZOS = {};
       for (const c of data) {
-        if (!PRAZOS[c.convenio]) PRAZOS[c.convenio] = {};
-        PRAZOS[c.convenio][c.tabela] = c.prazo || 96;
         if (!COEFICIENTES[c.convenio]) COEFICIENTES[c.convenio] = {};
         COEFICIENTES[c.convenio][c.tabela] = c.valor;
       }
-    }
-
-
-    // Telefone + botão de WhatsApp (celular = 11 dígitos com 9 após o DDD)
-    let MODELOS = [];
-    async function carregarModelos() {
-      const { data } = await supabaseClient.from("modelos_mensagem").select("*").eq("ativo", true).order("ordem");
-      MODELOS = data || [];
-    }
-    function textoModelo() {
-      const sel = document.getElementById("selModeloMsg");
-      const m = MODELOS.find((x) => sel && String(x.id) === sel.value) || MODELOS[0];
-      const base = m ? m.texto : "Olá, {nome}! Aqui é {operador} da MM Crédito.";
-      const primeiroNome = ((LEAD && LEAD.nome) || "").split(" ")[0];
-      const operador = PERFIL ? PERFIL.nome.split(" ")[0] : "";
-      return base.replace(/\{nome\}/g, primeiroNome).replace(/\{operador\}/g, operador);
-    }
-    function abrirWhats(d) {
-      window.open(`https://wa.me/55${d}?text=${encodeURIComponent(textoModelo())}`, "_blank", "noopener");
-      return false;
-    }
-    let ALERTAS_TEL = {};
-    function avisoTel(d) {
-      const a = ALERTAS_TEL[d];
-      if (!a) return "";
-      let t = "";
-      if (a.errado) t += ` <span title="Esse número já foi marcado como errado em outro cliente" style="background:#7a1f1f; color:#fff; padding:2px 8px; border-radius:10px; font-size:11px; margin-left:6px;">🚫 número já marcado como errado</span>`;
-      if (a.outros > 0) t += ` <span title="O mesmo número aparece em outros clientes" style="background:#7a5a10; color:#fff; padding:2px 8px; border-radius:10px; font-size:11px; margin-left:6px;">⚠ repetido em ${a.outros} cliente(s)</span>`;
-      return t;
-    }
-    async function carregarAlertasTel() {
-      const tels = (LEAD.telefones || []).map((t) => String(t).replace(/\D/g, "")).filter(Boolean);
-      if (tels.length === 0) return;
-      const { data } = await supabaseClient.rpc("checar_telefones", { p_telefones: tels, p_lead_id: LEAD.id });
-      ALERTAS_TEL = {};
-      (data || []).forEach((r) => { if (r.outros > 0 || r.errado) ALERTAS_TEL[r.telefone] = r; });
-    }
-    function linkTelefone(tel) {
-      const d = String(tel || "").replace(/\D/g, "");
-      const ehCelular = d.length === 11 && d[2] === "9";
-      if (!ehCelular) return (d || "-") + avisoTel(d);
-      return `${d}${avisoTel(d)} <a href="#" onclick="return abrirWhats('${d}')" style="background:#25D366; color:#fff; text-decoration:none; padding:2px 8px; border-radius:10px; font-size:11px; margin-left:6px;">WhatsApp</a>`;
     }
 
     const params = new URLSearchParams(window.location.search);
@@ -449,64 +322,20 @@
     function preencherSelect(el, valores) {
       el.innerHTML = valores.map((v) => `<option value="${v}">${v}</option>`).join("");
     }
-    // Prazo travado: vem da tabela escolhida (cadastrado pelo admin em Coeficientes).
-    function atualizarPrazo() {
-      const sel = document.getElementById("simPrazo");
-      const aviso = document.getElementById("simPrazoAviso");
-      const linhas = [...document.querySelectorAll(".sim-incluir")].filter((i) => i.checked && !i.disabled);
-      const alvos = (linhas.length ? linhas.map((i) => i.closest("tr")) : [document.querySelector(".sim-convenio")?.closest("tr")]).filter(Boolean);
-      const prazos = alvos.map((tr) => {
-        const conv = tr.querySelector(".sim-convenio").value, tab = tr.querySelector(".sim-tabela").value;
-        return (PRAZOS[conv] || {})[tab];
-      }).filter(Boolean);
-      document.querySelectorAll(".sim-convenio").forEach((selC) => {
-        const tr = selC.closest("tr");
-        const cel = tr.querySelector(".sim-prazo");
-        if (!cel) return;
-        const p = (PRAZOS[selC.value] || {})[tr.querySelector(".sim-tabela").value];
-        cel.textContent = p ? `${p} meses` : "-";
+    preencherSelect(document.getElementById("simPrazo"), PRAZOS_MESES);
+
+    // Popula convênio/tabela em cada linha da simulação, de forma independente
+    const CONVENIOS_DISPONIVEIS = Object.keys(TABELAS_POR_CONVENIO);
+    document.querySelectorAll(".sim-convenio").forEach((selConvenio) => {
+      preencherSelect(selConvenio, CONVENIOS_DISPONIVEIS);
+      const linha = selConvenio.closest("tr");
+      const selTabela = linha.querySelector(".sim-tabela");
+      preencherSelect(selTabela, TABELAS_POR_CONVENIO[selConvenio.value]);
+      selConvenio.addEventListener("change", () => {
+        preencherSelect(selTabela, TABELAS_POR_CONVENIO[selConvenio.value]);
+        recalcular();
       });
-      const unicos = [...new Set(prazos)];
-      const prazo = unicos[0] || PRAZOS_MESES[0];
-      sel.innerHTML = `<option value="${prazo}">${prazo}</option>`;
-      aviso.textContent = unicos.length > 1 ? `Atenção: tabelas com prazos diferentes (${unicos.join(" e ")} meses). Usando ${prazo}.` : "";
-      aviso.style.color = unicos.length > 1 ? "#ff6b6b" : "";
-    }
-
-    // Convênios/tabelas vêm do banco (página Coeficientes do admin) — atualizam sozinhos.
-    function tabelasDoConvenio(conv) { return Object.keys(COEFICIENTES[conv] || {}); }
-
-    function popularSelectsSimulacao() {
-      let mudou = false;
-      const convenios = Object.keys(COEFICIENTES);
-      document.querySelectorAll(".sim-convenio").forEach((selConvenio) => {
-        const linha = selConvenio.closest("tr");
-        const selTabela = linha.querySelector(".sim-tabela");
-        const convAnt = selConvenio.value, tabAnt = selTabela.value;
-        preencherSelect(selConvenio, convenios);
-        if (convenios.includes(convAnt)) selConvenio.value = convAnt;
-        const tabelas = tabelasDoConvenio(selConvenio.value);
-        preencherSelect(selTabela, tabelas);
-        if (tabelas.includes(tabAnt)) selTabela.value = tabAnt;
-        if (selConvenio.value !== convAnt || selTabela.value !== tabAnt) mudou = true;
-        if (!selConvenio.dataset.ligado) {
-          selConvenio.dataset.ligado = "1";
-          selConvenio.addEventListener("change", () => {
-            preencherSelect(selTabela, tabelasDoConvenio(selConvenio.value));
-            recalcular();
-          });
-        }
-      });
-      return mudou;
-    }
-
-    async function atualizarCoeficientes() {
-      await carregarCoeficientes();
-      if (popularSelectsSimulacao() && typeof recalcular === "function") recalcular();
-      atualizarPrazo();
-    }
-    setInterval(atualizarCoeficientes, 30000);
-    document.addEventListener("visibilitychange", () => { if (!document.hidden) atualizarCoeficientes(); });
+    });
     document.querySelectorAll(".sim-divida, .sim-parcela, .sim-incluir, .sim-tabela").forEach((el) => {
       el.addEventListener("input", recalcular);
       el.addEventListener("change", recalcular);
@@ -530,7 +359,6 @@
 
     // Retorna a lista de linhas marcadas com "Incluir" e seus valores calculados
     function recalcular() {
-      atualizarPrazo();
       const itens = [];
       let totCC = 0, totCB = 0, totEMP = 0;
 
@@ -614,8 +442,6 @@
       const { data, error } = await supabaseClient.from("leads").select("*").eq("id", LEAD_ID).single();
       if (error || !data) { alert("Cliente não encontrado ou você não tem acesso a ele."); window.location.href = "consultor.html"; return; }
       LEAD = data;
-      await carregarModelos();
-      await carregarAlertasTel();
 
       document.getElementById("nomeCliente").textContent = LEAD.nome || "(sem nome)";
       document.getElementById("statusBadge").className = "badge " + LEAD.status;
@@ -624,14 +450,22 @@
       document.getElementById("leadInfo").innerHTML = `
         <div><span class="lbl">CPF</span><br>${LEAD.cpf || "-"}</div>
         <div><span class="lbl">PMT</span><br>${formatBRL(LEAD.pmt)}</div>
-        <div><span class="lbl">Telefones (base)</span><br>${(LEAD.telefones || []).map(linkTelefone).join("<br>") || "-"}</div>
-        ${MODELOS.length ? `<div><span class="lbl">Mensagem do WhatsApp</span><br><select id="selModeloMsg" style="max-width:320px;">${MODELOS.map((m) => `<option value="${m.id}">${m.titulo}</option>`).join("")}</select></div>` : ""}
-        ${LEAD.data_nascimento ? `<div><span class="lbl">Data de nascimento</span><br>${new Date(LEAD.data_nascimento + "T00:00:00").toLocaleDateString("pt-BR")}</div>` : ""}
-        ${LEAD.convenio ? `<div><span class="lbl">Convênio do cliente</span><br>${LEAD.convenio === "OUTRO" ? "Outro (sem tabela cadastrada)" : LEAD.convenio}</div>` : ""}
+        <div><span class="lbl">Telefones (base)</span><br>${(LEAD.telefones || []).join(" · ") || "-"}</div>
+        ${LEAD.valor_quitacao != null ? `<div><span class="lbl">Valor de quitação</span><br><strong style="color:var(--gold-soft); font-size:17px;">${formatBRL(LEAD.valor_quitacao)}</strong></div>` : ""}
+        ${LEAD.numero_contrato ? `<div><span class="lbl">Nº do contrato</span><br><strong style="color:var(--gold-soft); font-size:17px;">${String(LEAD.numero_contrato).replace(/</g, "&lt;")}</strong></div>` : ""}
+        ${LEAD.credor ? `<div><span class="lbl">Credor</span><br><strong style="color:var(--gold-soft); font-size:17px;">${String(LEAD.credor).replace(/</g, "&lt;")}</strong></div>` : ""}
+        ${LEAD.produto_origem ? `<div><span class="lbl">Produto</span><br><strong style="color:var(--gold-soft); font-size:17px;">${(typeof PRODUTO_LABEL !== "undefined" && PRODUTO_LABEL[LEAD.produto_origem]) || LEAD.produto_origem}</strong></div>` : ""}
       `;
-      // pré-preenche a linha de amortização do cartão de crédito com a PMT do cliente (é a parcela ANTIGA que ele já paga)
-      const campoAmortCC = document.querySelector('.sim-parcela[data-produto="cartao_credito"][data-tipo="amortizacao"]');
-      if (campoAmortCC) campoAmortCC.value = LEAD.pmt || 0;
+      // pré-preenche a linha do produto da base (cartão benefício, cartão de crédito ou empréstimo)
+      const produtoBase = LEAD.produto_origem || "cartao_credito";
+      const tipoLinha = produtoBase === "emprestimo" ? "margem" : "amortizacao";
+      const selLinha = `[data-produto="${produtoBase}"][data-tipo="${tipoLinha}"]`;
+      const campoParcela = document.querySelector(".sim-parcela" + selLinha);
+      if (campoParcela) campoParcela.value = LEAD.pmt || 0;                       // PMT = parcela antiga
+      const campoDivida = document.querySelector(".sim-divida" + selLinha);
+      if (campoDivida && LEAD.valor_quitacao != null) campoDivida.value = LEAD.valor_quitacao;   // valor de quitação = dívida
+      const campoCredor = document.querySelector(".sim-credor" + selLinha);
+      if (campoCredor && LEAD.credor) campoCredor.value = LEAD.credor;           // banco da base
 
       // pré-preenche o cadastro (endereço/contato/dados bancários) se já tiver algo salvo
       document.getElementById("cadCep").value = LEAD.cep || "";
@@ -652,11 +486,7 @@
       await carregarDocumentos();
       await carregarObservacoes();
       await carregarRelacionadas();
-      carregarHistorico();
-      carregarBoletos();
-      carregarChecklist();
       recalcular();
-      await iniciarContato();
     }
 
     function cadastroCompleto() {
@@ -832,14 +662,14 @@
       }
 
       statusEl.style.color = "var(--muted)"; statusEl.textContent = "Salvando...";
-      const { data: destino, error } = await supabaseClient.rpc("registrar_tabulacao", {
-        p_lead_id: LEAD.id, p_resultado: resultado, p_observacao: observacao || null, p_reagendado_para: reagendadoPara,
+      const { error } = await supabaseClient.from("tabulacoes").insert({
+        lead_id: LEAD.id, consultor_id: PERFIL.id, resultado, observacao: observacao || null, reagendado_para: reagendadoPara,
       });
       if (error) { statusEl.style.color = "var(--danger)"; statusEl.textContent = "Erro: " + error.message; return; }
-      marcarTabulado();
-      if (destino === "liberado") { window.location.href = "consultor.html"; return; }
 
-      const novoStatus = destino === "tabulado" ? "tabulado" : "em_andamento";
+      const finais = ["sem_interesse", "recusou", "numero_errado"];
+      const novoStatus = finais.includes(resultado) ? "tabulado" : "em_andamento";
+      await supabaseClient.from("leads").update({ status: novoStatus }).eq("id", LEAD.id);
       LEAD.status = novoStatus;
       document.getElementById("statusBadge").className = "badge " + novoStatus;
       document.getElementById("statusBadge").textContent = STATUS_LABEL[novoStatus];
@@ -853,114 +683,6 @@
       carregarObservacoes();
       setTimeout(() => { window.location.href = "consultor.html"; }, 1800);
     });
-
-
-
-
-    // ---------- Checklist de documentos ----------
-    let CHECK_ITENS = [];
-    let CHECK_ESTADO = {};
-    async function carregarChecklist() {
-      const { data: cfg } = await supabaseClient.rpc("obter_configuracao", { p_chave: "checklist_itens" });
-      CHECK_ITENS = String(cfg || "").split("\n").map((t) => t.trim()).filter(Boolean);
-      const { data } = await supabaseClient.from("lead_checklist").select("*").eq("lead_id", LEAD.id);
-      CHECK_ESTADO = {};
-      (data || []).forEach((r) => { CHECK_ESTADO[r.item] = r.recebido; });
-      renderChecklist();
-    }
-    function renderChecklist() {
-      const box = document.getElementById("listaChecklist");
-      if (CHECK_ITENS.length === 0) { box.innerHTML = `<p class="hint">Nenhum item configurado pelo administrador.</p>`; return; }
-      box.innerHTML = CHECK_ITENS.map((it, i) => `
-        <label style="display:flex; align-items:center; gap:10px; margin:8px 0; font-size:15px; ${CHECK_ESTADO[it] ? "color:var(--success);" : ""}">
-          <input type="checkbox" data-i="${i}" ${CHECK_ESTADO[it] ? "checked" : ""} style="width:18px; height:18px;" onchange="marcarChecklist(${i}, this.checked)">
-          ${it}
-        </label>`).join("");
-      const faltam = CHECK_ITENS.filter((it) => !CHECK_ESTADO[it]);
-      const r = document.getElementById("resumoChecklist");
-      r.style.color = faltam.length ? "var(--gold-soft)" : "var(--success)";
-      r.textContent = faltam.length ? `Falta: ${faltam.join(", ")}.` : "Todos os documentos foram recebidos. ✅";
-    }
-    async function marcarChecklist(i, valor) {
-      const item = CHECK_ITENS[i];
-      const { error } = await supabaseClient.from("lead_checklist").upsert(
-        { lead_id: LEAD.id, item, recebido: valor, atualizado_em: new Date().toISOString(), atualizado_por: PERFIL.id },
-        { onConflict: "lead_id,item" });
-      if (error) { alert("Erro ao salvar: " + error.message); return; }
-      CHECK_ESTADO[item] = valor;
-      renderChecklist();
-    }
-
-    // ---------- Boletos de quitação ----------
-    const FORMA_BOLETO = { bacen: "Bacen", consumidor: "Consumidor", procuracao: "Procuração", contato_interno: "Contato interno" };
-    const fmtData = (d) => (d ? new Date(d + "T00:00:00").toLocaleDateString("pt-BR") : "-");
-    async function carregarBoletos() {
-      const tbody = document.getElementById("tbodyBoletos");
-      const { data, error } = await supabaseClient.from("boletos_quitacao").select("*").eq("lead_id", LEAD.id).order("criado_em", { ascending: false });
-      if (error) { tbody.innerHTML = `<tr><td colspan="6" style="color:var(--muted);">Não foi possível carregar os boletos.</td></tr>`; return; }
-      if (!data || data.length === 0) { tbody.innerHTML = `<tr><td colspan="6" style="color:var(--muted);">Nenhum pedido registrado.</td></tr>`; return; }
-      const hoje = new Date().toISOString().slice(0, 10);
-      tbody.innerHTML = data.map((b) => {
-        const atrasado = b.status === "pendente" && b.vencimento < hoje;
-        const sit = b.status === "recebido" ? "Recebido" : b.status === "cancelado" ? "Cancelado" : (atrasado ? "ATRASADO" : "Pendente");
-        const cor = atrasado ? "color:var(--danger); font-weight:bold;" : b.status === "recebido" ? "color:var(--success);" : "";
-        return `<tr>
-          <td>${FORMA_BOLETO[b.forma] || b.forma}</td>
-          <td>${b.banco || "-"}${b.contrato ? " · " + b.contrato : ""}</td>
-          <td>${fmtData(b.solicitado_em)}</td>
-          <td style="${cor}">${fmtData(b.vencimento)}</td>
-          <td style="${cor}">${sit}</td>
-          <td>${b.status === "pendente" ? `<button class="btn secondary" style="padding:4px 10px; font-size:12px;" onclick="marcarBoleto(${b.id}, 'recebido')">Recebido</button>` : ""}</td>
-        </tr>`;
-      }).join("");
-    }
-    async function marcarBoleto(id, status) {
-      const { error } = await supabaseClient.from("boletos_quitacao").update({ status }).eq("id", id);
-      if (error) { alert("Erro: " + error.message); return; }
-      carregarBoletos();
-    }
-    document.getElementById("bolData").value = new Date().toISOString().slice(0, 10);
-    document.getElementById("btnRegistrarBoleto").addEventListener("click", async () => {
-      const st = document.getElementById("bolStatus");
-      const data = document.getElementById("bolData").value;
-      if (!data) { st.style.color = "var(--danger)"; st.textContent = "Informe a data do pedido."; return; }
-      st.style.color = "var(--muted)"; st.textContent = "Salvando...";
-      const { error } = await supabaseClient.from("boletos_quitacao").insert({
-        lead_id: LEAD.id, consultor_id: PERFIL.id, forma: document.getElementById("bolForma").value,
-        banco: document.getElementById("bolBanco").value.trim() || null, contrato: document.getElementById("bolContrato").value.trim() || null,
-        solicitado_em: data, observacao: document.getElementById("bolObs").value.trim() || null,
-      });
-      if (error) { st.style.color = "var(--danger)"; st.textContent = "Erro: " + error.message; return; }
-      st.style.color = "var(--success)"; st.textContent = "Pedido registrado.";
-      ["bolBanco", "bolContrato", "bolObs"].forEach((i) => { document.getElementById(i).value = ""; });
-      carregarBoletos();
-    });
-
-    // ---------- Histórico completo do cliente ----------
-    const EVENTO_LABEL = { sorteio: "Sorteado", tabulacao: "Tabulação", simulacao: "Simulação", proposta: "Proposta (venda)", liberado: "Liberado para a fila", cadastro_manual: "Cadastrado fora da base" };
-    function detalheEvento(e) {
-      const d = e.detalhe || {};
-      if (e.tipo === "tabulacao") {
-        return `${RESULTADO_LABEL[d.resultado] || d.resultado}${d.observacao ? " — " + d.observacao : ""}${d.reagendado_para ? " (retorno " + new Date(d.reagendado_para).toLocaleString("pt-BR") + ")" : ""}`;
-      }
-      if (e.tipo === "simulacao" || e.tipo === "proposta") return `${formatBRL(d.valor_contrato)} em ${d.prazo || "-"} meses`;
-      if (e.tipo === "cadastro_manual") return d.convenio && d.convenio !== "OUTRO" ? `Convênio: ${d.convenio}` : "";
-      return "";
-    }
-    async function carregarHistorico() {
-      const tbody = document.getElementById("tbodyHistorico");
-      const { data, error } = await supabaseClient.from("lead_eventos").select("*, profiles(nome)")
-        .eq("lead_id", LEAD.id).order("criado_em", { ascending: false });
-      if (error) { tbody.innerHTML = `<tr><td colspan="4" style="color:var(--muted);">Não foi possível carregar o histórico.</td></tr>`; return; }
-      if (!data || data.length === 0) { tbody.innerHTML = `<tr><td colspan="4" style="color:var(--muted);">Sem registros ainda.</td></tr>`; return; }
-      tbody.innerHTML = data.map((e) => `
-        <tr>
-          <td>${new Date(e.criado_em).toLocaleString("pt-BR")}</td>
-          <td>${e.profiles ? e.profiles.nome : "-"}</td>
-          <td>${EVENTO_LABEL[e.tipo] || e.tipo}</td>
-          <td>${detalheEvento(e)}</td>
-        </tr>`).join("");
-    }
 
     // ---------- Pessoas relacionadas ----------
     async function carregarRelacionadas() {
@@ -1081,11 +803,10 @@
       });
       if (erroProp) { erroEl.textContent = "Erro ao salvar proposta: " + erroProp.message; btn.disabled = false; btn.textContent = "Tabular como VENDA"; return; }
 
-      const { error: erroTab } = await supabaseClient.rpc("registrar_tabulacao", {
-        p_lead_id: LEAD.id, p_resultado: "vendeu", p_observacao: null, p_reagendado_para: null,
+      await supabaseClient.from("tabulacoes").insert({
+        lead_id: LEAD.id, consultor_id: PERFIL.id, resultado: "vendeu", observacao: null,
       });
-      if (erroTab) { erroEl.textContent = "Proposta salva, mas erro ao tabular a venda: " + erroTab.message; btn.disabled = false; btn.textContent = "Tabular como VENDA"; return; }
-      marcarTabulado();
+      await supabaseClient.from("leads").update({ status: "tabulado" }).eq("id", LEAD.id);
       LEAD.status = "tabulado";
       document.getElementById("statusBadge").className = "badge tabulado";
       document.getElementById("statusBadge").textContent = "Tabulado";
@@ -1096,136 +817,6 @@
       carregarObservacoes();
       setTimeout(() => { window.location.href = "consultor.html"; }, 1800);
     });
-
-
-    // ---------- Contato: SIMULAR ou TABULAR (não sai da tela sem tabular) ----------
-    let TAB_PENDENTE = false;
-    const SEC_FLUXO = ["secaoSimular", "secaoCadastro", "secaoDocumentos", "secaoFinalizar", "secaoChecklist", "secaoBoletos", "secaoRelacionadas"];
-    function mostrarFluxo(mostrar) { SEC_FLUXO.forEach((id) => { const el = document.getElementById(id); if (el) el.style.display = mostrar ? "" : "none"; }); }
-
-    async function verificarTabulacaoPendente() {
-      if (LEAD.status !== "em_andamento") return false;
-      const { data: s } = await supabaseClient.from("sorteios").select("sorteado_em")
-        .eq("lead_id", LEAD.id).eq("consultor_id", PERFIL.id).order("sorteado_em", { ascending: false }).limit(1);
-      let q = supabaseClient.from("tabulacoes").select("lead_id", { count: "exact", head: true })
-        .eq("lead_id", LEAD.id).eq("consultor_id", PERFIL.id);
-      if (s && s[0]) q = q.gte("criado_em", s[0].sorteado_em);
-      const { count, error } = await q;
-      if (error) return false;
-      return (count || 0) === 0;
-    }
-
-    function aplicarBloqueioSaida() {
-      document.getElementById("avisoPendente").classList.toggle("hidden", !TAB_PENDENTE);
-      document.getElementById("linkVoltar").style.display = TAB_PENDENTE ? "none" : "";
-      document.getElementById("btnSairCliente").classList.toggle("hidden", TAB_PENDENTE || LEAD.status !== "em_andamento");
-    }
-
-    function marcarTabulado() { TAB_PENDENTE = false; aplicarBloqueioSaida(); }
-
-    window.addEventListener("beforeunload", (e) => { if (TAB_PENDENTE) { e.preventDefault(); e.returnValue = ""; } });
-
-    async function iniciarContato() {
-      TAB_PENDENTE = await verificarTabulacaoPendente();
-      const card = document.getElementById("secaoContato");
-      const chave = `mm_simular_${LEAD.id}`;
-      let escolheuSimular = false;
-      try { escolheuSimular = sessionStorage.getItem(chave) === "1"; } catch (e) {}
-      if (TAB_PENDENTE && !escolheuSimular) {
-        card.style.display = "";
-        mostrarFluxo(false);
-      } else {
-        card.style.display = "none";
-        mostrarFluxo(true);
-      }
-      if (convenioSemTabela() && LEAD.status === "em_andamento") { card.style.display = ""; mostrarFluxo(false); }
-      aplicarBloqueioSaida();
-      aplicarRegraConvenio();
-      preSelecionarConvenioDoCliente();
-    }
-
-    // Cliente fora da base com convênio sem tabela cadastrada: não abre simulação, só tabula.
-    function convenioSemTabela() {
-      return !!LEAD && LEAD.convenio === "OUTRO";
-    }
-    function aplicarRegraConvenio() {
-      const btn = document.getElementById("btnEscolherSimular");
-      if (convenioSemTabela()) {
-        btn.disabled = true;
-        btn.title = "Convênio sem tabela cadastrada: só é possível tabular.";
-        btn.textContent = "🧮 SIMULAR (indisponível: convênio sem tabela)";
-      }
-    }
-    // Pré-seleciona, nas linhas da simulação, o convênio do cliente (quando cadastrado)
-    function preSelecionarConvenioDoCliente() {
-      if (!LEAD || !LEAD.convenio || !COEFICIENTES[LEAD.convenio]) return;
-      document.querySelectorAll(".sim-convenio").forEach((sel) => {
-        sel.value = LEAD.convenio;
-        sel.dispatchEvent(new Event("change"));
-      });
-    }
-
-    document.getElementById("btnEscolherSimular").addEventListener("click", () => {
-      if (convenioSemTabela()) return;
-      try { sessionStorage.setItem(`mm_simular_${LEAD.id}`, "1"); } catch (e) {}
-      document.getElementById("secaoContato").style.display = "none";
-      mostrarFluxo(true);
-      document.getElementById("secaoSimular").scrollIntoView({ behavior: "smooth" });
-    });
-
-    document.getElementById("btnEscolherTabular").addEventListener("click", () => {
-      document.getElementById("painelTabularRapido").classList.remove("hidden");
-    });
-
-    document.getElementById("btnConfirmarTabRapida").addEventListener("click", async () => {
-      const statusEl = document.getElementById("tabRapidaStatus");
-      const resultado = document.getElementById("resultadoRapido").value;
-      if (!resultado) { statusEl.style.color = "var(--danger)"; statusEl.textContent = "Selecione um resultado."; return; }
-      const obs = document.getElementById("obsRapida").value.trim();
-      const btn = document.getElementById("btnConfirmarTabRapida");
-      btn.disabled = true;
-      statusEl.style.color = "var(--muted)"; statusEl.textContent = "Salvando...";
-
-      const { error } = await supabaseClient.rpc("registrar_tabulacao", {
-        p_lead_id: LEAD.id, p_resultado: resultado, p_observacao: obs || null, p_reagendado_para: null,
-      });
-      if (error) { statusEl.style.color = "var(--danger)"; statusEl.textContent = "Erro: " + error.message; btn.disabled = false; return; }
-      marcarTabulado();
-      window.location.href = "consultor.html";
-    });
-
-
-    // ---------- Tabulação por voz (ditado em português) ----------
-    (function iniciarDitado() {
-      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-      const botoes = document.querySelectorAll(".btn-mic");
-      if (!SR) { botoes.forEach((b) => b.classList.add("hidden")); return; }
-      botoes.forEach((btn) => {
-        let rec = null;
-        const resetar = () => { btn.textContent = "🎤 Ditar observação"; };
-        btn.addEventListener("click", () => {
-          // segundo clique: para na hora (a interface volta ao normal sem esperar o navegador)
-          if (rec) {
-            const r = rec; rec = null; resetar();
-            try { r.stop(); } catch (e) {}
-            setTimeout(() => { try { r.abort(); } catch (e) {} }, 1500);
-            return;
-          }
-          const r = new SR();
-          rec = r;
-          r.lang = "pt-BR"; r.interimResults = false; r.continuous = true;
-          const alvo = document.getElementById(btn.dataset.alvo);
-          r.onresult = (ev) => {
-            let texto = "";
-            for (let i = ev.resultIndex; i < ev.results.length; i++) if (ev.results[i].isFinal) texto += ev.results[i][0].transcript + " ";
-            if (texto) alvo.value = (alvo.value ? alvo.value.trimEnd() + " " : "") + texto.trim();
-          };
-          r.onerror = () => { if (rec === r) { rec = null; resetar(); } };
-          r.onend = () => { if (rec === r) { rec = null; resetar(); } };
-          try { r.start(); btn.textContent = "⏹ Parar ditado"; } catch (e) { rec = null; resetar(); }
-        });
-      });
-    })();
 
     // ---------- Sair do cliente (devolve pra fila) ----------
     document.getElementById("btnSairCliente").addEventListener("click", async () => {
@@ -1249,12 +840,8 @@
       const auth = await exigirLogin("consultor");
       if (!auth) return;
       PERFIL = auth.profile;
-      iniciarLembretes(PERFIL);
-      entrarPresenca(PERFIL);
       document.getElementById("whoami").textContent = PERFIL.nome;
       await carregarCoeficientes();
-      popularSelectsSimulacao();
-      atualizarPrazo();
       carregarCliente();
     })();
   </script>
