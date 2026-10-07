@@ -46,14 +46,31 @@
 
     <div class="card" id="cardImportar">
       <h2 style="margin-top:0;">Importar mailing para uma base</h2>
-      <p class="hint" style="margin-top:0;">Mesmo formato de sempre: CPF, NOME, PMT, TELEFONE (e, se quiser, CONVENIO e DATA_NASCIMENTO). Os clientes entram direto na base escolhida.</p>
+      <p class="hint" style="margin-top:0;">Mesmo formato de sempre: CPF, NOME, PMT, TELEFONE (e, se quiser, CONVENIO, DATA_NASCIMENTO, <strong>VALOR QUITACAO</strong>, <strong>NUMERO CONTRATO</strong> e <strong>CREDOR</strong> e <strong>PRODUTO</strong>). Os clientes entram direto na base escolhida.</p>
       <div class="row">
         <div class="field"><label>Base de destino</label><select id="impBase"></select></div>
         <div class="field"><label>Arquivo CSV</label><input type="file" id="impArquivo" accept=".csv"></div>
       </div>
+      <div class="field" style="max-width:460px;">
+        <label>Credor (banco) desta planilha — opcional</label>
+        <input type="text" id="impCredor" placeholder="Ex: DIGIMAIS (usado se a planilha não tiver a coluna CREDOR)">
+      </div>
+      <div class="field" style="max-width:460px;">
+        <label>Produto dos clientes desta planilha</label>
+        <select id="impProduto">
+          <option value="">Não definir (usa Cartão de Crédito)</option>
+          <option value="cartao_beneficio">Cartão Benefício</option>
+          <option value="cartao_credito">Cartão de Crédito</option>
+          <option value="emprestimo">Empréstimo consignado</option>
+        </select>
+      </div>
       <label class="hint" style="display:block; margin:6px 0 10px;">
         <input type="checkbox" id="impMover" style="width:16px; height:16px; vertical-align:middle;">
         Se o CPF já existir em outra base e ainda estiver livre (sem operador), <strong>mover</strong> para esta base
+      </label>
+      <label class="hint" style="display:block; margin:0 0 10px;">
+        <input type="checkbox" id="impAtualizarQuit" checked style="width:16px; height:16px; vertical-align:middle;">
+        Atualizar <strong>valor de quitação</strong>, <strong>nº do contrato</strong>, <strong>credor</strong> e <strong>produto</strong> dos CPFs que já existem
       </label>
       <button class="btn" id="btnImportarBase">Importar</button>
       <div class="error-msg" id="erroImportBase"></div>
@@ -142,6 +159,63 @@
           </td>
         </tr>`;
       }).join("");
+    }
+
+    // ---------- Leitura de VALOR QUITACAO e NUMERO CONTRATO ----------
+    function lerCsvCompleto(texto) {
+      const linhas = []; let campo = ""; let linha = []; let aspas = false;
+      for (let i = 0; i < texto.length; i++) {
+        const c = texto[i];
+        if (aspas) {
+          if (c === '"') { if (texto[i + 1] === '"') { campo += '"'; i++; } else aspas = false; } else campo += c;
+        } else if (c === '"') aspas = true;
+        else if (c === ",") { linha.push(campo); campo = ""; }
+        else if (c === "\n") { linha.push(campo); linhas.push(linha); linha = []; campo = ""; }
+        else if (c !== "\r") campo += c;
+      }
+      if (campo !== "" || linha.length) { linha.push(campo); linhas.push(linha); }
+      return linhas.filter((l) => l.some((x) => x.trim() !== ""));
+    }
+    const nzCab = (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9]+/g, " ").trim();
+    function numeroBR(v) {
+      const t = String(v ?? "").trim();
+      if (!t) return null;
+      let n;
+      if (t.includes(",")) n = parseFloat(t.replace(/\./g, "").replace(",", "."));
+      else if (/^\d+\.\d{1,2}$/.test(t)) n = parseFloat(t);
+      else n = parseFloat(t.replace(/\./g, ""));
+      return Number.isNaN(n) ? null : n;
+    }
+    function produtoChave(v) {
+      const t = nzCab(v);
+      if (!t) return null;
+      if (t.includes("BENEFICIO")) return "cartao_beneficio";
+      if (t.includes("EMPREST")) return "emprestimo";
+      if (t.includes("CARTAO") || t.includes("CREDITO")) return "cartao_credito";
+      return null;
+    }
+    function extrairQuitacao(texto) {
+      const linhas = lerCsvCompleto(texto);
+      const mapa = new Map();
+      if (linhas.length < 2) return mapa;
+      const cab = linhas[0].map(nzCab);
+      const iCpf = cab.indexOf("CPF");
+      const iVal = cab.findIndex((h) => ["VALOR QUITACAO", "VALOR DE QUITACAO", "QUITACAO"].includes(h));
+      const iCont = cab.findIndex((h) => ["NUMERO CONTRATO", "NUMERO DO CONTRATO", "N CONTRATO", "N DO CONTRATO", "CONTRATO"].includes(h));
+      const iCred = cab.findIndex((h) => ["CREDOR", "BANCO CREDOR", "NOME DO CREDOR"].includes(h));
+      const iProd = cab.findIndex((h) => ["PRODUTO", "TIPO DE PRODUTO"].includes(h));
+      if (iCpf < 0 || (iVal < 0 && iCont < 0 && iCred < 0 && iProd < 0)) return mapa;
+      for (let i = 1; i < linhas.length; i++) {
+        const cpf = (linhas[i][iCpf] || "").replace(/\D/g, "");
+        if (!cpf) continue;
+        mapa.set(cpf, {
+          valor_quitacao: iVal >= 0 ? numeroBR(linhas[i][iVal]) : null,
+          numero_contrato: iCont >= 0 ? ((linhas[i][iCont] || "").trim() || null) : null,
+          credor: iCred >= 0 ? ((linhas[i][iCred] || "").trim().toUpperCase() || null) : null,
+          produto_origem: iProd >= 0 ? produtoChave(linhas[i][iProd]) : null,
+        });
+      }
+      return mapa;
     }
 
     // ---------- Criar / editar ----------
@@ -238,8 +312,19 @@
       btn.disabled = true; btn.textContent = "Importando...";
 
       try {
-        const leads = parseLeadsCSV(await input.files[0].text());
+        const textoCsv = await input.files[0].text();
+        const leads = parseLeadsCSV(textoCsv);
         if (leads.length === 0) throw new Error("Nenhum cliente válido encontrado no arquivo.");
+        const quitacao = extrairQuitacao(textoCsv);
+        const credorPadrao = document.getElementById("impCredor").value.trim().toUpperCase() || null;
+        const produtoPadrao = document.getElementById("impProduto").value || null;
+        leads.forEach((l) => {
+          const x = quitacao.get(String(l.cpf).replace(/\D/g, ""));
+          l.valor_quitacao = x ? x.valor_quitacao : null;
+          l.numero_contrato = x ? x.numero_contrato : null;
+          l.credor = (x && x.credor) || credorPadrao;
+          l.produto_origem = (x && x.produto_origem) || produtoPadrao;
+        });
 
         // reconhece o convênio pelos cadastrados em Coeficientes; o que não bater vira "OUTRO"
         const { data: coefs } = await supabaseClient.from("coeficientes").select("convenio");
@@ -279,6 +364,17 @@
           }
         }
 
+        let quitAtualizados = 0;
+        if (document.getElementById("impAtualizarQuit").checked && duplicados.length > 0) {
+          const payload = duplicados.filter((l) => l.valor_quitacao != null || l.numero_contrato || l.credor || l.produto_origem)
+            .map((l) => ({ cpf: l.cpf, valor_quitacao: l.valor_quitacao, numero_contrato: l.numero_contrato, credor: l.credor, produto_origem: l.produto_origem }));
+          for (let i = 0; i < payload.length; i += 1000) {
+            const { data, error } = await supabaseClient.rpc("atualizar_quitacao_importacao", { p_dados: payload.slice(i, i + 1000) });
+            if (error) throw new Error("Clientes importados, mas não consegui atualizar quitação/contrato dos já existentes: " + error.message);
+            quitAtualizados += data || 0;
+          }
+        }
+
         input.value = "";
         erroEl.style.color = "var(--success)";
         erroEl.textContent = `${inseridosCpf.size} cliente(s) novo(s) importado(s) para "${base.nome}".`;
@@ -286,6 +382,7 @@
           erroEl.textContent += ` ${duplicados.length} CPF(s) já existiam na base de dados`;
           erroEl.textContent += mover ? ` — ${movidos} que ainda estavam livres foram movidos para esta base.` : " (ficaram onde estavam; marque a opção de mover se quiser trazê-los).";
         }
+        if (quitAtualizados > 0) erroEl.textContent += ` ${quitAtualizados} cliente(s) já existentes tiveram quitação, contrato, credor e produto atualizados.`;
         if (naoReconhecidos.size > 0) {
           erroEl.textContent += ` Convênio(s) não reconhecido(s), importados como "Outro": ${[...naoReconhecidos].slice(0, 8).join(", ")}${naoReconhecidos.size > 8 ? "…" : ""}.`;
         }
