@@ -112,7 +112,7 @@
         <!-- ===== PÁGINA: ROTEIROS ===== -->
         <div class="page-panel" id="page-roteiros">
           <h1>Roteiros operacionais</h1>
-          <p class="subtitle">Procedimentos publicados pelo administrador.</p>
+          <p class="subtitle">Roteiros em PDF publicados pelo administrador, por convênio.</p>
           <div id="listaRoteiros"></div>
         </div>
 
@@ -140,17 +140,26 @@
     async function carregarRoteiros() {
       const lista = document.getElementById("listaRoteiros");
       lista.innerHTML = `<p class="hint">Carregando...</p>`;
-      const { data, error } = await supabaseClient.from("roteiros").select("*").order("atualizado_em", { ascending: false });
-      if (error) { lista.innerHTML = `<p class="hint">Erro ao carregar roteiros.</p>`; return; }
+      const { data, error } = await supabaseClient.from("roteiros").select("*").order("convenio").order("titulo");
+      if (error) { lista.innerHTML = `<p class="hint">Erro ao carregar roteiros: ${error.message}</p>`; return; }
       ROTEIROS_CACHE = data || [];
       if (ROTEIROS_CACHE.length === 0) { lista.innerHTML = `<p class="hint">Nenhum roteiro publicado ainda.</p>`; return; }
-      lista.innerHTML = ROTEIROS_CACHE.map((r) => `
+      const esc = (t) => String(t ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;");
+      lista.innerHTML = ROTEIROS_CACHE.map((r, i) => `
         <div class="card roteiro-card">
-          <h3>${r.titulo}</h3>
-          <div class="conteudo">${r.conteudo.replace(/</g, "&lt;")}</div>
-          <div class="meta">Atualizado em ${new Date(r.atualizado_em).toLocaleString("pt-BR")}</div>
+          <h3>${esc(r.titulo)}</h3>
+          <div class="meta">Convênio: ${esc(r.convenio)} · Atualizado em ${new Date(r.atualizado_em).toLocaleDateString("pt-BR")}</div>
+          <button class="btn" style="margin-top:10px;" onclick="abrirRoteiro(${i})">Abrir PDF</button>
         </div>
       `).join("");
+    }
+
+    async function abrirRoteiro(i) {
+      const r = ROTEIROS_CACHE[i];
+      if (!r) return;
+      const { data, error } = await supabaseClient.storage.from("roteiros").createSignedUrl(r.arquivo_path, 600);
+      if (error || !data) { alert("Não foi possível abrir o roteiro: " + (error ? error.message : "")); return; }
+      window.open(data.signedUrl, "_blank");
     }
 
     async function carregarLeads() {
