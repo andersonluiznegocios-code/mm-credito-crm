@@ -57,6 +57,7 @@
       <h2><span class="step-num">1</span> Simular proposta</h2>
       <div class="field" style="max-width:200px;"><label>Prazo (meses)</label><select id="simPrazo"></select></div>
       <p class="hint">Cada linha abaixo tem seu próprio convênio e tabela — pode combinar convênios diferentes na mesma operação.</p>
+      <p class="error-msg" id="avisoCoef"></p>
 
       <h2 style="margin-top:20px;">Cartão de Crédito</h2>
       <label class="hint" style="display:block; margin-bottom:8px;">
@@ -305,10 +306,11 @@
     let ULTIMOS_ITENS = [];
     let DOCUMENTOS = [];
     let COEFICIENTES = {};
+    let COEF_ERRO = null;
 
     async function carregarCoeficientes() {
       const { data, error } = await supabaseClient.from("coeficientes").select("*");
-      if (error || !data) return;
+      if (error || !data) { COEF_ERRO = error ? error.message : "sem resposta do banco"; return; }
       COEFICIENTES = {};
       for (const c of data) {
         if (!COEFICIENTES[c.convenio]) COEFICIENTES[c.convenio] = {};
@@ -324,18 +326,28 @@
     }
     preencherSelect(document.getElementById("simPrazo"), PRAZOS_MESES);
 
-    // Popula convênio/tabela em cada linha da simulação, de forma independente
-    const CONVENIOS_DISPONIVEIS = Object.keys(TABELAS_POR_CONVENIO);
-    document.querySelectorAll(".sim-convenio").forEach((selConvenio) => {
-      preencherSelect(selConvenio, CONVENIOS_DISPONIVEIS);
-      const linha = selConvenio.closest("tr");
-      const selTabela = linha.querySelector(".sim-tabela");
-      preencherSelect(selTabela, TABELAS_POR_CONVENIO[selConvenio.value]);
-      selConvenio.addEventListener("change", () => {
-        preencherSelect(selTabela, TABELAS_POR_CONVENIO[selConvenio.value]);
-        recalcular();
+    // Convênios e tabelas liberados = os cadastrados em Coeficientes (admin). A lista fixa do código só entra se o banco estiver vazio.
+    const ordemNatural = (a, b) => String(a).localeCompare(String(b), "pt-BR", { numeric: true, sensitivity: "base" });
+    function conveniosLiberados() {
+      const doBanco = Object.keys(COEFICIENTES).sort(ordemNatural);
+      return doBanco.length ? doBanco : Object.keys(TABELAS_POR_CONVENIO);
+    }
+    function tabelasDoConvenio(conv) {
+      const doBanco = COEFICIENTES[conv];
+      return doBanco ? Object.keys(doBanco).sort(ordemNatural) : (TABELAS_POR_CONVENIO[conv] || []);
+    }
+    function montarSelectsConvenio() {
+      const lista = conveniosLiberados();
+      document.querySelectorAll(".sim-convenio").forEach((selConvenio) => {
+        const selTabela = selConvenio.closest("tr").querySelector(".sim-tabela");
+        preencherSelect(selConvenio, lista);
+        preencherSelect(selTabela, tabelasDoConvenio(selConvenio.value));
+        selConvenio.onchange = () => {
+          preencherSelect(selTabela, tabelasDoConvenio(selConvenio.value));
+          recalcular();
+        };
       });
-    });
+    }
     document.querySelectorAll(".sim-divida, .sim-parcela, .sim-incluir, .sim-tabela").forEach((el) => {
       el.addEventListener("input", recalcular);
       el.addEventListener("change", recalcular);
@@ -466,6 +478,11 @@
       if (campoDivida && LEAD.valor_quitacao != null) campoDivida.value = LEAD.valor_quitacao;   // valor de quitação = dívida
       const campoCredor = document.querySelector(".sim-credor" + selLinha);
       if (campoCredor && LEAD.credor) campoCredor.value = LEAD.credor;           // banco da base
+      const selConvLinha = document.querySelector(".sim-convenio" + selLinha);
+      if (selConvLinha && LEAD.convenio && [...selConvLinha.options].some((o) => o.value === LEAD.convenio)) {
+        selConvLinha.value = LEAD.convenio;
+        selConvLinha.onchange();                                                   // atualiza a lista de tabelas desse convênio
+      }
 
       // pré-preenche o cadastro (endereço/contato/dados bancários) se já tiver algo salvo
       document.getElementById("cadCep").value = LEAD.cep || "";
@@ -842,6 +859,12 @@
       PERFIL = auth.profile;
       document.getElementById("whoami").textContent = PERFIL.nome;
       await carregarCoeficientes();
+      montarSelectsConvenio();
+      if (Object.keys(COEFICIENTES).length === 0) {
+        document.getElementById("avisoCoef").textContent =
+          "Não consegui carregar os convênios cadastrados em Coeficientes" + (COEF_ERRO ? " (" + COEF_ERRO + ")" : " (nenhum cadastrado)") +
+          ". A lista abaixo é a padrão do sistema e pode estar desatualizada — avise o administrador.";
+      }
       carregarCliente();
     })();
   </script>
