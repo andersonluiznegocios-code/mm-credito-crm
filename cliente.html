@@ -304,6 +304,7 @@
     let LEAD = null;
     let ULTIMA_SIMULACAO = null;
     let ULTIMOS_ITENS = [];
+    let PROPOSTA_SALVA = false;
     let DOCUMENTOS = [];
     let COEFICIENTES = {};
     let COEF_ERRO = null;
@@ -679,20 +680,13 @@
       }
 
       statusEl.style.color = "var(--muted)"; statusEl.textContent = "Salvando...";
-      const { error } = await supabaseClient.from("tabulacoes").insert({
-        lead_id: LEAD.id, consultor_id: PERFIL.id, resultado, observacao: observacao || null, reagendado_para: reagendadoPara,
+      // o banco só aceita tabulação pela função registrar_tabulacao (ela também cuida do status e da fila do cliente)
+      const { error } = await supabaseClient.rpc("registrar_tabulacao", {
+        p_lead_id: LEAD.id, p_resultado: resultado, p_observacao: observacao || null, p_reagendado_para: reagendadoPara,
       });
       if (error) { statusEl.style.color = "var(--danger)"; statusEl.textContent = "Erro: " + error.message; return; }
 
-      const finais = ["sem_interesse", "recusou", "numero_errado"];
-      const novoStatus = finais.includes(resultado) ? "tabulado" : "em_andamento";
-      await supabaseClient.from("leads").update({ status: novoStatus }).eq("id", LEAD.id);
-      LEAD.status = novoStatus;
-      document.getElementById("statusBadge").className = "badge " + novoStatus;
-      document.getElementById("statusBadge").textContent = STATUS_LABEL[novoStatus];
-      document.getElementById("btnSairCliente").classList.toggle("hidden", novoStatus !== "em_andamento");
-
-      statusEl.style.color = "var(--success)"; statusEl.textContent = "Tabulado como negociação.";
+      statusEl.style.color = "var(--success)"; statusEl.textContent = "Tabulação registrada.";
       document.getElementById("resultado").value = "";
       document.getElementById("observacao").value = "";
       document.getElementById("reagendadoPara").value = "";
@@ -812,21 +806,33 @@
 
       const produtosIncluidos = [...new Set(ULTIMOS_ITENS.map((i) => PRODUTO_LABEL[i.produto]))].join(", ");
 
-      const { error: erroProp } = await supabaseClient.from("propostas").insert({
-        lead_id: LEAD.id, consultor_id: PERFIL.id, simulacao_id: ULTIMA_SIMULACAO.id,
-        produtos: produtosIncluidos, prazo: ULTIMA_SIMULACAO.prazo,
-        saldo_devedor: ULTIMA_SIMULACAO.saldo_devedor,
-        valor_contrato: ULTIMA_SIMULACAO.valor_contrato, valor: ULTIMA_SIMULACAO.troco,
-      });
-      if (erroProp) { erroEl.textContent = "Erro ao salvar proposta: " + erroProp.message; btn.disabled = false; btn.textContent = "Tabular como VENDA"; return; }
+      if (!PROPOSTA_SALVA) {
+        const { error: erroProp } = await supabaseClient.from("propostas").insert({
+          lead_id: LEAD.id, consultor_id: PERFIL.id, simulacao_id: ULTIMA_SIMULACAO.id,
+          produtos: produtosIncluidos, prazo: ULTIMA_SIMULACAO.prazo,
+          saldo_devedor: ULTIMA_SIMULACAO.saldo_devedor,
+          valor_contrato: ULTIMA_SIMULACAO.valor_contrato, valor: ULTIMA_SIMULACAO.troco,
+        });
+        if (erroProp) { erroEl.textContent = "Erro ao salvar proposta: " + erroProp.message; btn.disabled = false; btn.textContent = "Tabular como VENDA"; return; }
+        PROPOSTA_SALVA = true;
+      }
 
-      await supabaseClient.from("tabulacoes").insert({
-        lead_id: LEAD.id, consultor_id: PERFIL.id, resultado: "vendeu", observacao: null,
+      // a tabulação de venda também só é aceita pela função do banco
+      const { error: erroTab } = await supabaseClient.rpc("registrar_tabulacao", {
+        p_lead_id: LEAD.id, p_resultado: "vendeu", p_observacao: null, p_reagendado_para: null,
       });
-      await supabaseClient.from("leads").update({ status: "tabulado" }).eq("id", LEAD.id);
-      LEAD.status = "tabulado";
-      document.getElementById("statusBadge").className = "badge tabulado";
-      document.getElementById("statusBadge").textContent = "Tabulado";
+      if (erroTab) {
+        erroEl.textContent = "A proposta foi salva, mas não consegui registrar a tabulação de venda: " + erroTab.message + " — clique em \"Tabular como VENDA\" de novo (a proposta não será duplicada).";
+        btn.disabled = false; btn.textContent = "Tabular como VENDA"; return;
+      }
+
+      // confere o status real que o banco gravou (se o cliente ainda estiver visível pra você)
+      const { data: leadAtual } = await supabaseClient.from("leads").select("status").eq("id", LEAD.id).maybeSingle();
+      if (leadAtual) {
+        LEAD.status = leadAtual.status;
+        document.getElementById("statusBadge").className = "badge " + leadAtual.status;
+        document.getElementById("statusBadge").textContent = STATUS_LABEL[leadAtual.status] || leadAtual.status;
+      }
       document.getElementById("btnSairCliente").classList.add("hidden");
 
       btn.disabled = false; btn.textContent = "Tabular como VENDA";
