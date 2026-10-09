@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>MM Crédito — Procuração</title>
+<link rel="icon" href="favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=Roboto:ital,wght@0,400;0,700;1,400&display=swap">
+<link rel="stylesheet" href="style.css">
+<style>
+#proc *{box-sizing:border-box}
+#proc [hidden]{display:none!important}
+#proc{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.45}
+#proc .wrap{max-width:1240px;margin:0 auto;padding-inline:16px;padding-block:20px 120px}
+#proc header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:20px}
+#proc .brand{font-family:var(--f-display);font-size:clamp(30px,6vw,42px);letter-spacing:.02em;line-height:.95}
+#proc .brand span{color:var(--accent)}
+#proc .sub{font-family:var(--f-label);font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-size:13px}
+#proc .grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:24px;align-items:start}
+@media (max-width:920px){#proc .grid{grid-template-columns:minmax(0,1fr)}}
+#proc form{display:grid;gap:18px;min-width:0}
+#proc fieldset{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:16px;margin:0;display:grid;gap:12px;min-width:0}
+#proc legend{font-family:var(--f-display);font-size:22px;letter-spacing:.04em;padding:0 6px;color:var(--fg)}
+#proc legend small{font-family:var(--f-label);font-size:13px;color:var(--muted);letter-spacing:.06em;margin-left:6px}
+#proc .row{display:grid;gap:12px;grid-template-columns:repeat(var(--c,2),minmax(0,1fr))}
+@media (max-width:520px){#proc .row{grid-template-columns:minmax(0,1fr)}
+#proc .row.keep{grid-template-columns:repeat(var(--c,2),minmax(0,1fr))}}
+#proc .f{display:grid;gap:4px;min-width:0}
+#proc .f label,#proc .lbl{font-family:var(--f-label);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+#proc .f label i{font-style:normal;color:var(--accent)}
+#proc input,#proc select,#proc textarea{width:100%;font:inherit;font-size:16px;color:var(--fg);background:var(--surface-2);border:1px solid var(--line);border-radius:7px;padding:10px 11px;min-width:0}
+#proc textarea{resize:vertical;min-height:120px;font-size:14px;line-height:1.45}
+#proc input:focus-visible,#proc select:focus-visible,#proc textarea:focus-visible,#proc button:focus-visible,#proc summary:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+#proc input.bad{border-color:var(--err)}
+#proc .hint{font-size:12.5px;color:var(--muted);min-height:1em}
+#proc .hint.err{color:var(--err)}
+#proc .hint.ok{color:var(--ok)}
+#proc .seg{display:flex;gap:8px;flex-wrap:wrap}
+#proc .chip{position:relative}
+#proc .chip input{position:absolute;opacity:0;inset:0;width:100%;height:100%;cursor:pointer;margin:0}
+#proc .chip span{display:inline-flex;align-items:center;gap:8px;padding:9px 14px;border:1px solid var(--line);border-radius:999px;background:var(--surface-2);font-family:var(--f-label);font-weight:600;letter-spacing:.05em;text-transform:uppercase;font-size:14px}
+#proc .chip span::before{content:"";width:10px;height:10px;border-radius:50%;border:2px solid var(--muted)}
+#proc .chip input:checked + span{border-color:var(--accent);color:var(--fg)}
+#proc .chip input:checked + span::before{background:var(--accent);border-color:var(--accent)}
+#proc .chip input:focus-visible + span{outline:2px solid var(--accent);outline-offset:2px}
+#proc details.cfg{border:1px dashed var(--line);border-radius:10px;padding:12px 16px;background:transparent}
+#proc details.cfg summary{cursor:pointer;font-family:var(--f-label);font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-size:14px}
+#proc details.cfg[open] summary{margin-bottom:12px}
+#proc details.cfg .inner{display:grid;gap:12px}
+#proc .btn{font-family:var(--f-label);font-weight:700;font-size:17px;letter-spacing:.08em;text-transform:uppercase;border-radius:8px;padding:12px 20px;border:1px solid transparent;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+#proc .btn.primary{background:var(--accent);color:var(--accent-ink)}
+#proc .btn.primary[aria-disabled="true"]{opacity:.55}
+#proc .btn.ghost{background:transparent;color:var(--fg);border-color:var(--line)}
+#proc .btn.small{font-size:14px;padding:8px 12px}
+#proc .side{position:sticky;top:calc(env(safe-area-inset-top,0px) + 14px);display:grid;gap:12px;min-width:0}
+@media (max-width:920px){#proc .side{position:static}}
+#proc .side-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+#proc .side-head h2{margin:0;font-family:var(--f-display);font-weight:400;font-size:24px;letter-spacing:.04em}
+#proc .paper-scroll{max-height:calc(100vh - 150px);overflow:auto;border-radius:6px}
+@media (max-width:920px){#proc .paper-scroll{max-height:none}}
+#proc .paper{background:var(--paper);color:var(--paper-ink);font-family:var(--f-doc);font-size:12.5px;line-height:1.5;padding:7% 8%;border-radius:4px;box-shadow:0 10px 30px rgba(0,0,0,.28)}
+@media (max-width:520px){#proc .paper{font-size:11.5px}}
+#proc .paper h3{text-align:center;font-size:1.25em;margin:0 0 1.1em;letter-spacing:.02em}
+#proc .paper p{text-align:justify;margin:0 0 .75em}
+#proc .paper .ph{background:var(--ph-bg);color:var(--ph-ink);border-radius:2px;padding:0 2px;font-weight:600}
+#proc .paper .box{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--doc-blue);background:var(--doc-fill);margin:.4em 0 1em}
+#proc .paper .box div{padding:.45em .6em;min-width:0;overflow-wrap:anywhere}
+#proc .paper .box div + div{border-left:1px solid var(--doc-blue)}
+#proc .paper .box b{display:block;color:var(--doc-blue);font-size:.72em;letter-spacing:.02em}
+#proc .paper .sig{margin:3em auto 0;width:52%;border-top:1px solid var(--paper-ink);text-align:center;padding-top:.3em;font-weight:700;line-height:1.4}
+#proc .paper .cart{border:1px solid #9AA3AB;margin-top:1.4em;padding:.4em .6em 4.5em;text-align:center;font-style:italic;color:#6B7680;font-size:.75em}
+#proc .bar{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));z-index:5}
+#proc .bar .in{max-width:1240px;margin:0 auto;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+#proc .status{flex:1 1 220px;min-width:0;font-size:14px;color:var(--muted)}
+#proc .status b{color:var(--err);font-weight:600}
+#proc .status.ready b{color:var(--ok)}
+#proc .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(86px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:8px;font-weight:500;max-width:calc(100% - 32px);z-index:6}
+@media (prefers-reduced-motion:no-preference){#proc .btn{transition:filter .15s}
+#proc .btn:hover{filter:brightness(1.08)}}
+
+#proc{
+  --bg:#0a1128; --surface:#131c3d; --surface-2:#0a1128; --line:#2a3868;
+  --fg:#f2f0ea; --muted:#9aa3c2; --accent:#d4af37; --accent-ink:#0a1128;
+  --ok:#4caf50; --err:#ef6a64;
+  --paper:#FFFFFF; --paper-ink:#1A1F24; --ph-bg:#FFF0C2; --ph-ink:#8A5A00; --doc-blue:#1F3864; --doc-fill:#EEF2F8;
+  --f-display:"Bebas Neue","Barlow Condensed",Impact,sans-serif;
+  --f-label:"Barlow Condensed","Arial Narrow",sans-serif;
+  --f-body:"Barlow",system-ui,sans-serif;
+  --f-doc:"Roboto",Arial,sans-serif;
+  color-scheme:dark;
+}
+#proc .bar{left:220px}
+@media (max-width:720px){#proc .bar{left:0}}
+@media (max-width:720px){.app-shell{align-items:stretch}.main-content{width:100%}}
+#proc .hist{margin-top:28px}
+#proc .hist h2{font-family:var(--f-display);font-weight:400;font-size:24px;letter-spacing:.04em;margin:0 0 10px;color:var(--fg)}
+#proc .hist table{font-size:13px}
+#proc .hist .vazio{color:var(--muted);font-size:14px}
+
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand"><img src="logo.png" alt="MM Crédito"></div>
+    <div style="display:flex; align-items:center; gap:16px;">
+      <span class="who" id="whoami"></span>
+      <button onclick="logout()">Sair</button>
+    </div>
+  </div>
+
+  <div class="app-shell">
+    <div class="sidebar">
+      <div class="sidebar-item" id="menuVoltar">🏠 Painel</div>
+      <div class="sidebar-item ativo">📑 Procuração</div>
+    </div>
+    <div class="main-content">
+      <div id="proc">
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="brand">PROCURAÇÃO <span>·</span> BOLETOS MASTER / PKL</div>
+      <div class="sub">MM Crédito · preencha os dados do cliente e gere o PDF</div>
+    </div>
+    <button type="button" class="btn ghost small" id="btnNovo">Novo cliente</button>
+  </header>
+
+  <div class="grid">
+    <form id="frm" novalidate autocomplete="off">
+      <fieldset>
+        <legend>Cliente <small>outorgante</small></legend>
+        <div class="f"><label for="nome">Nome completo <i>*</i></label><input id="nome" placeholder="Ex.: Maria Aparecida da Silva"></div>
+        <div class="row" style="--c:3">
+          <div class="f"><label for="sexo">Sexo <i>*</i></label>
+            <select id="sexo"><option value="">—</option><option value="F">Feminino</option><option value="M">Masculino</option></select></div>
+          <div class="f"><label for="ec">Estado civil <i>*</i></label>
+            <select id="ec"><option value="">—</option><option value="solteir">Solteiro(a)</option><option value="casad">Casado(a)</option><option value="divorciad">Divorciado(a)</option><option value="viúv">Viúvo(a)</option><option value="separad">Separado(a) judicialmente</option><option value="uniao">União estável</option></select></div>
+          <div class="f"><label for="nac">Nacionalidade</label>
+            <select id="nac"><option value="br">Brasileiro(a)</option><option value="out">Outra…</option></select></div>
+        </div>
+        <div class="f" id="nacOutraWrap" hidden><label for="nacOutra">Qual nacionalidade?</label><input id="nacOutra" placeholder="Ex.: portuguesa"></div>
+        <div class="f"><label for="prof">Profissão <i>*</i></label><input id="prof" placeholder="Ex.: Professora de Educação Básica II"></div>
+        <div class="row">
+          <div class="f"><label for="cpf">CPF <i>*</i></label><input id="cpf" inputmode="numeric" placeholder="000.000.000-00"><div class="hint" id="cpfHint"></div></div>
+          <div class="f"><label for="rg">RG <i>*</i></label><input id="rg" placeholder="00.000.000-0"><div class="hint"></div></div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Endereço</legend>
+        <div class="row" style="--c:2">
+          <div class="f"><label for="cep">CEP <i>*</i></label><input id="cep" inputmode="numeric" placeholder="00000-000"><div class="hint" id="cepHint"></div></div>
+          <div class="f"><label for="numero">Número <i>*</i></label><input id="numero" placeholder="123"><div class="hint"></div></div>
+        </div>
+        <div class="f"><label for="logr">Rua / Avenida <i>*</i></label><input id="logr" placeholder="Rua das Flores"></div>
+        <div class="row">
+          <div class="f"><label for="compl">Complemento</label><input id="compl" placeholder="Apto, bloco…"></div>
+          <div class="f"><label for="bairro">Bairro <i>*</i></label><input id="bairro" placeholder="Centro"></div>
+        </div>
+        <div class="row keep" style="--c:3">
+          <div class="f" style="grid-column:span 2"><label for="cidade">Cidade <i>*</i></label><input id="cidade" placeholder="São Paulo"></div>
+          <div class="f"><label for="uf">UF <i>*</i></label><input id="uf" maxlength="2" placeholder="SP" style="text-transform:uppercase"></div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Contato <small>para receber os boletos</small></legend>
+        <div class="f"><label for="email">E-mail para boletos <i>*</i></label><input id="email" type="email" inputmode="email" placeholder="cliente@gmail.com"><div class="hint" id="emailHint"></div></div>
+        <div class="row">
+          <div class="f"><label for="tel1">Telefone <i>*</i></label><input id="tel1" inputmode="tel" placeholder="(11) 90000-0000"></div>
+          <div class="f"><label for="tel2">Telefone 2</label><input id="tel2" inputmode="tel" placeholder="(11) 90000-0000"></div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Instituição</legend>
+        <div class="lbl">Procuração para <i style="font-style:normal;color:var(--accent)">*</i></div>
+        <div class="seg">
+          <label class="chip"><input type="checkbox" id="bMaster" checked><span>Banco Master</span></label>
+          <label class="chip"><input type="checkbox" id="bPkl"><span id="pklChipTxt">PKL</span></label>
+        </div>
+        <div class="row" style="--c:3">
+          <div class="f"><label for="cidadeAss">Local da assinatura</label><input id="cidadeAss" placeholder="São Paulo"></div>
+          <div class="f"><label for="dataAss">Data</label><input id="dataAss" type="date"></div>
+          <div class="f"><label for="validade">Validade</label>
+            <select id="validade"><option value="30">30 dias</option><option value="60">60 dias</option><option value="90">90 dias</option><option value="180">180 dias</option></select></div>
+        </div>
+      </fieldset>
+
+      <details class="cfg" id="cfg" hidden>
+        <summary>Configurações fixas (outorgado e nome do PKL) · só administrador</summary>
+        <div class="inner">
+          <div class="f"><label for="outorgado">Texto do outorgado</label><textarea id="outorgado"></textarea></div>
+          <div class="f"><label for="pklNome">Nome do PKL no documento</label><input id="pklNome"></div>
+          <div class="hint">Vale para todos os operadores. Só o administrador consegue salvar.</div>
+          <div class="seg">
+            <button type="button" class="btn primary small" id="btnSalvarCfg">Salvar configuração</button>
+            <button type="button" class="btn ghost small" id="btnReset">Restaurar texto padrão</button>
+          </div>
+        </div>
+      </details>
+    </form>
+
+    <aside class="side">
+      <div class="side-head">
+        <h2>Prévia do documento</h2>
+        <span class="sub">Campos em amarelo ainda faltam</span>
+      </div>
+      <div class="paper-scroll"><div class="paper" id="paper"></div></div>
+    </aside>
+  </div>
+
+  <div class="hist">
+    <h2 id="histTitulo">Procurações geradas</h2>
+    <div class="table-wrap"><table>
+      <thead id="histHead"></thead>
+      <tbody id="histBody"><tr><td class="vazio">Carregando...</td></tr></tbody>
+    </table></div>
+  </div>
+</div>
+
+<div class="bar"><div class="in">
+  <div class="status" id="status"></div>
+  <button type="button" class="btn primary" id="btnPdf">Gerar PDF</button>
+</div></div>
+<div class="toast" id="toast" hidden></div>
+
+
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pdfmake@0.2.10/build/pdfmake.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pdfmake@0.2.10/build/vfs_fonts.js"></script>
+  <script>
+(function(){
+const $ = id => document.getElementById(id);
+const DEF = {
+  outorgado: "ANDERSON LUIZ DOS SANTOS, brasileiro, solteiro, supervisor, inscrito no CPF sob nº 091.830.896-83 e portador do RG nº 63.444.642-3, residente e domiciliado na Rua Angela Giusti Zampese, nº 185, Parque Imperial, Ferraz de Vasconcelos - SP, CEP: 08510-100, neste ato representado na forma de seu contrato/estatuto social.",
+  pklNome: "PKL",
+  validade: "30",
+  cidadeAss: "São Paulo"
+};
+const EXT = {"30":"30 (trinta) dias","60":"60 (sessenta) dias","90":"90 (noventa) dias","180":"180 (cento e oitenta) dias"};
+const MESES = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+
+// ---------- configurações fixas (Supabase: procuracao_config) ----------
+let PERFIL = null;
+const CLIENTE_ID = (()=>{ const n = parseInt(new URLSearchParams(location.search).get("cliente"),10); return Number.isFinite(n) ? n : null; })();
+function applyCfg(c){ $("outorgado").value=c.outorgado; $("pklNome").value=c.pklNome; }
+async function carregarCfg(){
+  const { data, error } = await supabaseClient.from("procuracao_config").select("*").eq("id",1).single();
+  if(error || !data){ toast("Configuração não carregada, usando o texto padrão."); return; }
+  applyCfg({ outorgado: data.outorgado_texto || DEF.outorgado, pklNome: data.pkl_nome || DEF.pklNome });
+  render();
+}
+async function salvarCfg(){
+  const { error } = await supabaseClient.rpc("salvar_procuracao_config", { p_outorgado_texto: $("outorgado").value.trim()===DEF.outorgado ? "" : $("outorgado").value, p_pkl_nome: $("pklNome").value });
+  toast(error ? "Erro ao salvar: "+error.message : "Configuração salva para todos os operadores.");
+}
+
+// ---------- masks ----------
+const dig = v => (v||"").replace(/\D/g,"");
+function mCPF(v){v=dig(v).slice(0,11);return v.replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d{1,2})$/,"$1-$2");}
+function mCEP(v){v=dig(v).slice(0,8);return v.replace(/(\d{5})(\d)/,"$1-$2");}
+function mTel(v){v=dig(v).slice(0,11);if(v.length<=2)return v.length?"("+v:"";if(v.length<=6)return "("+v.slice(0,2)+") "+v.slice(2);if(v.length<=10)return "("+v.slice(0,2)+") "+v.slice(2,6)+"-"+v.slice(6);return "("+v.slice(0,2)+") "+v.slice(2,7)+"-"+v.slice(7);}
+function cpfOk(c){c=dig(c);if(c.length!==11||/^(\d)\1+$/.test(c))return false;for(let t=9;t<11;t++){let s=0;for(let i=0;i<t;i++)s+=+c[i]*(t+1-i);if(((s*10)%11)%10!==+c[t])return false;}return true;}
+const emailOk = e => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e.trim());
+
+// ---------- text helpers ----------
+function g(sexo, m, f){ return sexo==="F"?f:sexo==="M"?m:m+"(a)"; } // m: "portador" -> portador/portadora/portador(a)
+function gw(sexo, base){ return sexo==="F"?base+"a":sexo==="M"?base+"o":base+"o(a)"; } // base: "solteir"
+function dataExt(iso){ if(!iso) return ""; const [y,m,d]=iso.split("-"); return d+" de "+MESES[+m-1]+" de "+y; }
+function listaInst(names, art){ // art: "ao" | "do"
+  return names.map(n=>art+" "+n).join(" e ");
+}
+
+function read(){
+  const v = id => ($(id).value||"").trim();
+  return {
+    nome:v("nome"), sexo:v("sexo"), ec:v("ec"), nac:v("nac"), nacOutra:v("nacOutra"), prof:v("prof"),
+    cpf:v("cpf"), rg:v("rg").toUpperCase(), cep:v("cep"), numero:v("numero"), logr:v("logr"), compl:v("compl"),
+    bairro:v("bairro"), cidade:v("cidade"), uf:v("uf").toUpperCase(), email:v("email"), tel1:v("tel1"), tel2:v("tel2"),
+    master:$("bMaster").checked, pkl:$("bPkl").checked, cidadeAss:v("cidadeAss")||DEF.cidadeAss, dataAss:v("dataAss"),
+    outorgado:v("outorgado")||DEF.outorgado, pklNome:v("pklNome")||DEF.pklNome, validade:v("validade")||"30"
+  };
+}
+
+function missing(d){
+  const m=[];
+  if(!d.nome)m.push("nome"); if(!d.sexo)m.push("sexo"); if(!d.ec)m.push("estado civil");
+  if(d.nac==="out"&&!d.nacOutra)m.push("nacionalidade");
+  if(!d.prof)m.push("profissão"); if(!cpfOk(d.cpf))m.push("CPF válido"); if(!d.rg)m.push("RG");
+  if(dig(d.cep).length!==8)m.push("CEP"); if(!d.logr)m.push("rua"); if(!d.numero)m.push("número");
+  if(!d.bairro)m.push("bairro"); if(!d.cidade)m.push("cidade"); if(d.uf.length!==2)m.push("UF");
+  if(!emailOk(d.email))m.push("e-mail"); if(dig(d.tel1).length<10)m.push("telefone");
+  if(!d.master&&!d.pkl)m.push("instituição");
+  if(!d.dataAss)m.push("data");
+  return m;
+}
+
+// ---------- document model (shared by preview + PDF) ----------
+// segment: {t:text, b:bold, ph:true when placeholder}
+function build(d){
+  const S=(t,b)=>({t,b:!!b});
+  const V=(val,ph,b)=> val?{t:val,b:!!b}:{t:"["+ph+"]",b:!!b,ph:true};
+  const ecTxt = d.ec ? (d.ec==="uniao" ? "em união estável" : d.ec==="separad" ? gw(d.sexo,"separad")+" judicialmente" : gw(d.sexo,d.ec)) : "";
+  const nacTxt = d.nac==="out" ? d.nacOutra : gw(d.sexo,"brasileir");
+  const endParts=[];
+  if(d.logr||d.numero) endParts.push((d.logr||"[RUA]")+", nº "+(d.numero||"[Nº]"));
+  if(d.compl) endParts.push(d.compl);
+  const end = d.logr ? endParts.join(", ")+", "+(d.bairro||"[BAIRRO]")+", "+(d.cidade||"[CIDADE]")+" - "+(d.uf||"[UF]")+", CEP: "+(d.cep||"[CEP]") : "";
+  const tels = [d.tel1,d.tel2].filter(Boolean).join(" / ");
+
+  const nomes=[]; if(d.master) nomes.push("Banco Master S.A."); if(d.pkl) nomes.push(d.pklNome);
+  const nomesUp=[]; if(d.master) nomesUp.push("o BANCO MASTER S.A."); if(d.pkl) nomesUp.push("o "+d.pklNome.toUpperCase());
+  const instUp = nomesUp.length? nomesUp.join(" e ") : null;
+  const instAo = nomes.length? listaInst(nomes,"ao") : null;
+  const instDo = nomes.length? listaInst(nomes,"do") : null;
+
+  const p1=[S("OUTORGANTE: ",1),V(d.nome,"NOME COMPLETO",1),S(", "),V(nacTxt,"NACIONALIDADE"),S(", "),V(ecTxt,"ESTADO CIVIL"),S(", "),V(d.prof,"PROFISSÃO"),
+    S(", "+g(d.sexo,"portador","portadora")+" do RG nº "),V(d.rg,"RG"),S(" e "+g(d.sexo,"inscrito","inscrita")+" no CPF sob nº "),V(d.cpf,"CPF"),
+    S(", residente e "+g(d.sexo,"domiciliado","domiciliada")+" na "),V(end,"ENDEREÇO COMPLETO"),S(".")];
+
+  const p2=[S("OUTORGADO: ",1),S(d.outorgado)];
+
+  const p3=[S("PODERES: ",1),
+    S("Pelo presente instrumento particular de procuração, o(a) OUTORGANTE nomeia e constitui o(a) OUTORGADO(A) acima qualificado(a) como seu bastante procurador, a quem confere amplos, gerais e ilimitados poderes para o foro em geral, em especial para representá-lo(a) perante "),
+    V(instUp,"INSTITUIÇÃO"),
+    S(" (inclusive em fase de liquidação extrajudicial, intervenção ou falência), o Banco Central do Brasil (BACEN), o PROCON, cartórios, plataformas eletrônicas e demais órgãos públicos e privados, podendo praticar todos os atos necessários à defesa de seus direitos e interesses, especialmente para: a) acessar contratos, extratos, históricos financeiros, saldos devedores e demais documentos e informações relativos a produtos e operações contratadas junto "),
+    V(instAo,"INSTITUIÇÃO"),
+    S("; b) requerer e obter informações, certidões e documentos junto a órgãos públicos e privados, instituições financeiras e demais entidades; c) habilitar créditos e apresentar requerimentos junto à EFB Regimes Especiais (ou entidade que a suceda na administração do regime especial "),
+    V(instDo,"INSTITUIÇÃO"),
+    S("); d) firmar acordos, transações, renegociações, quitações e demais ajustes relacionados aos contratos do(a) OUTORGANTE; e) formular reclamações, denúncias e requerimentos perante o Banco Central do Brasil, o PROCON e demais órgãos de defesa do consumidor; e f) representar o(a) OUTORGANTE em ações de superendividamento, ações revisionais de contrato e demais procedimentos judiciais e administrativos correlatos, podendo para tanto assinar petições, requerimentos, acordos e documentos correlatos.")];
+
+  const p4=[S("O(A) presente OUTORGADO(A) fica autorizado(a) a substabelecer os poderes ora conferidos, no todo ou em parte, a outros advogados ou prepostos, com ou sem reserva de poderes. Esta procuração tem validade de "),
+    S(EXT[d.validade]||EXT["30"],1),S(", contados da data de sua assinatura.")];
+
+  const p5=[S(d.cidadeAss+", "),V(dataExt(d.dataAss),"DATA"),S(".")];
+
+  return {p1,p2,p3,p4,p5,email:V(d.email,"E-MAIL"),tels:V(tels,"TELEFONE"),nome:V(d.nome,"NOME COMPLETO",1)};
+}
+
+// ---------- preview ----------
+const esc = s => s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const seg2html = arr => arr.map(s=>{let h=esc(s.t); if(s.b)h="<b>"+h+"</b>"; if(s.ph)h='<span class="ph">'+h+"</span>"; return h;}).join("");
+function render(){
+  const d=read(), m=build(d);
+  $("paper").innerHTML =
+    '<h3>PROCURAÇÃO "AD JUDICIA ET EXTRA"</h3>'+
+    "<p>"+seg2html(m.p1)+"</p>"+
+    '<div class="box"><div><b>E-MAIL PARA RECEBIMENTO DE BOLETOS:</b>'+seg2html([m.email])+'</div><div><b>TELEFONE DE CONTATO:</b>'+seg2html([m.tels])+"</div></div>"+
+    "<p>"+seg2html(m.p2)+"</p><p>"+seg2html(m.p3)+"</p><p>"+seg2html(m.p4)+"</p><p>"+seg2html(m.p5)+"</p>"+
+    '<div class="sig">OUTORGANTE<br>'+seg2html([m.nome])+"</div>"+
+    '<div class="cart">Espaço reservado para reconhecimento de firma / selo do cartório</div>';
+  $("pklChipTxt").textContent = d.pklNome;
+  const miss=missing(d), st=$("status");
+  if(miss.length){ st.className="status"; st.innerHTML="<b>Falta:</b> "+esc(miss.join(", ")); $("btnPdf").setAttribute("aria-disabled","true"); }
+  else { st.className="status ready"; st.innerHTML="<b>Tudo certo.</b> Pronto para gerar o PDF."; $("btnPdf").removeAttribute("aria-disabled"); }
+  // inline hints
+  const cpfD=dig(d.cpf), ch=$("cpfHint");
+  if(cpfD.length===11){ const ok=cpfOk(cpfD); ch.textContent=ok?"CPF válido":"CPF inválido, confira os números"; ch.className="hint "+(ok?"ok":"err"); $("cpf").classList.toggle("bad",!ok); }
+  else { ch.textContent=""; ch.className="hint"; $("cpf").classList.remove("bad"); }
+  const eh=$("emailHint"); if(d.email&&!emailOk(d.email)){eh.textContent="E-mail incompleto";eh.className="hint err";} else {eh.textContent="";eh.className="hint";}
+}
+
+// ---------- PDF ----------
+function pdfDoc(d){
+  const m=build(d);
+  const run = arr => arr.reduce((o,s)=>{const l=o[o.length-1]; if(l&&l.bold===s.b) l.text+=s.t; else o.push({text:s.t,bold:s.b}); return o;},[]);
+  const P = (arr,extra) => Object.assign({text:run(arr),alignment:"justify",margin:[0,0,0,8]},extra||{});
+  const blue="#1F3864";
+  const cell=(lab,seg)=>({stack:[{text:lab,bold:true,fontSize:7.5,color:blue,margin:[0,0,0,2]},{text:seg.t}]});
+  return {
+    pageSize:"A4", pageMargins:[52,48,52,48],
+    info:{title:"Procuração - "+d.nome, author:"MM Crédito"},
+    defaultStyle:{font:"Roboto",fontSize:10,lineHeight:1.22,color:"#1A1F24"},
+    content:[
+      {text:'PROCURAÇÃO "AD JUDICIA ET EXTRA"',bold:true,fontSize:14,alignment:"center",margin:[0,0,0,16]},
+      P(m.p1),
+      {table:{widths:["*","*"],body:[[cell("E-MAIL PARA RECEBIMENTO DE BOLETOS:",m.email),cell("TELEFONE DE CONTATO:",m.tels)]]},
+       layout:{fillColor:()=> "#EEF2F8",hLineColor:()=>blue,vLineColor:()=>blue,hLineWidth:()=>0.75,vLineWidth:()=>0.75,paddingLeft:()=>7,paddingRight:()=>7,paddingTop:()=>5,paddingBottom:()=>5},
+       margin:[0,4,0,12]},
+      P(m.p2),P(m.p3),P(m.p4),P(m.p5,{alignment:"left",margin:[0,4,0,0]}),
+      {canvas:[{type:"line",x1:115,y1:0,x2:376,y2:0,lineWidth:0.75}],margin:[0,46,0,4]},
+      {text:"OUTORGANTE",bold:true,alignment:"center"},
+      {text:d.nome,bold:true,alignment:"center"},
+      {table:{widths:["*"],heights:[70],body:[[{text:"Espaço reservado para reconhecimento de firma / selo do cartório",italics:true,fontSize:8,color:"#6B7680",alignment:"center"}]]},
+       layout:{hLineColor:()=>"#9AA3AB",vLineColor:()=>"#9AA3AB",hLineWidth:()=>0.75,vLineWidth:()=>0.75},margin:[0,18,0,0]}
+    ]
+  };
+}
+function fileName(d){
+  const n=d.nome.normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^A-Za-z0-9 ]/g,"").trim().replace(/\s+/g,"_").toUpperCase();
+  const inst=(d.master?"MASTER":"")+(d.master&&d.pkl?"_":"")+(d.pkl?"PKL":"");
+  return "Procuracao_"+inst+"_"+(n||"CLIENTE")+".pdf";
+}
+let toastT;
+function toast(msg){ const t=$("toast"); t.textContent=msg; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>t.hidden=true,3800); }
+let busy=false;
+const ehCelular = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints>1 && /Macintosh/.test(navigator.userAgent));
+async function registrar(d){
+  const inst=[]; if(d.master) inst.push("MASTER"); if(d.pkl) inst.push("PKL");
+  const { error } = await supabaseClient.rpc("registrar_procuracao", {
+    p_cliente_id: CLIENTE_ID, p_cliente_nome: d.nome, p_cliente_cpf: d.cpf, p_instituicoes: inst, p_validade_dias: parseInt(d.validade,10)
+  });
+  if(error) toast("PDF gerado, mas não consegui registrar: "+error.message); else carregarHistorico();
+}
+async function gerar(){
+  const d=read(), miss=missing(d);
+  if(miss.length){ toast("Preencha antes: "+miss.join(", ")); return; }
+  if(busy) return;
+  if(typeof pdfMake==="undefined"){ toast("O gerador de PDF não carregou. Verifique a internet e recarregue a página."); return; }
+  busy=true; const b=$("btnPdf"); const old=b.textContent; b.textContent="Gerando…";
+  const fname=fileName(d);
+  pdfMake.createPdf(pdfDoc(d)).getBlob(async blob=>{
+    try{
+      const file=new File([blob],fname,{type:"application/pdf"});
+      if(ehCelular() && navigator.canShare && navigator.canShare({files:[file]})){
+        try{ await navigator.share({files:[file],title:fname}); await registrar(d); return; }
+        catch(e){ if(e&&e.name==="AbortError"){ toast("Compartilhamento cancelado."); return; } }
+      }
+      const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=fname; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),20000); toast("PDF baixado: "+fname);
+      await registrar(d);
+    } finally { busy=false; b.textContent=old; }
+  });
+}
+
+// ---------- histórico (RLS: consultor vê as dele, admin vê todas) ----------
+async function carregarHistorico(){
+  const admin = PERFIL && PERFIL.role==="admin";
+  $("histTitulo").textContent = admin ? "Procurações geradas (todas)" : "Minhas procurações geradas";
+  $("histHead").innerHTML = "<tr><th>Data</th><th>Cliente</th><th>CPF</th><th>Instituições</th><th>Validade</th>"+(admin?"<th>Operador</th>":"")+"</tr>";
+  let r = await supabaseClient.from("procuracoes").select("*, profiles(nome)").order("gerada_em",{ascending:false}).limit(30);
+  if(r.error) r = await supabaseClient.from("procuracoes").select("*").order("gerada_em",{ascending:false}).limit(30);
+  const rows = r.data||[], tb=$("histBody");
+  if(r.error){ tb.innerHTML='<tr><td class="vazio">Não foi possível carregar o histórico.</td></tr>'; return; }
+  if(!rows.length){ tb.innerHTML='<tr><td class="vazio">Nenhuma procuração gerada ainda.</td></tr>'; return; }
+  tb.innerHTML = rows.map(p=>"<tr><td>"+new Date(p.gerada_em).toLocaleString("pt-BR")+"</td><td>"+esc(p.cliente_nome||"-")+"</td><td>"+(p.cliente_cpf?mCPF(p.cliente_cpf):"-")+"</td><td>"+esc((p.instituicoes||[]).map(x=>x==="MASTER"?"Banco Master":($("pklNome").value||"PKL")).join(" + "))+"</td><td>"+p.validade_dias+" dias</td>"+(admin?"<td>"+esc((p.profiles&&p.profiles.nome)||"-")+"</td>":"")+"</tr>").join("");
+}
+
+// ---------- CEP lookup (works when hosted normally; silently skipped where blocked) ----------
+let lastCep="";
+async function buscaCep(){
+  const c=dig($("cep").value); if(c.length!==8||c===lastCep) return; lastCep=c;
+  const h=$("cepHint"); h.textContent="Buscando endereço…"; h.className="hint";
+  try{
+    const r=await fetch("https://viacep.com.br/ws/"+c+"/json/"); const j=await r.json();
+    if(j.erro){ h.textContent="CEP não encontrado, preencha à mão"; h.className="hint err"; return; }
+    if(j.logradouro&&!$("logr").value) $("logr").value=j.logradouro;
+    if(j.bairro&&!$("bairro").value) $("bairro").value=j.bairro;
+    if(j.localidade&&!$("cidade").value) $("cidade").value=j.localidade;
+    if(j.uf&&!$("uf").value) $("uf").value=j.uf;
+    h.textContent="Endereço preenchido pelo CEP"; h.className="hint ok"; render(); $("numero").focus();
+  }catch(e){ h.textContent=""; }
+}
+
+// ---------- wiring ----------
+function todayISO(){ const n=new Date(); return n.getFullYear()+"-"+String(n.getMonth()+1).padStart(2,"0")+"-"+String(n.getDate()).padStart(2,"0"); }
+applyCfg(DEF); $("validade").value=DEF.validade; $("cidadeAss").value=DEF.cidadeAss; $("dataAss").value=todayISO();
+$("cpf").addEventListener("input",e=>e.target.value=mCPF(e.target.value));
+$("cep").addEventListener("input",e=>{e.target.value=mCEP(e.target.value); if(dig(e.target.value).length===8) buscaCep();});
+["tel1","tel2"].forEach(id=>$(id).addEventListener("input",e=>e.target.value=mTel(e.target.value)));
+$("uf").addEventListener("input",e=>e.target.value=e.target.value.replace(/[^a-zA-Z]/g,"").toUpperCase());
+$("nac").addEventListener("change",()=>{$("nacOutraWrap").hidden=$("nac").value!=="out";});
+$("frm").addEventListener("input",render); $("frm").addEventListener("change",render);
+$("frm").addEventListener("submit",e=>e.preventDefault());
+$("btnPdf").addEventListener("click",gerar);
+$("btnReset").addEventListener("click",()=>{applyCfg(DEF);render();toast("Texto padrão restaurado. Clique em Salvar configuração para valer para todos.");});
+$("btnSalvarCfg").addEventListener("click",salvarCfg);
+$("btnNovo").addEventListener("click",()=>{
+  ["nome","sexo","ec","prof","cpf","rg","cep","numero","logr","compl","bairro","cidade","uf","email","tel1","tel2","nacOutra"].forEach(id=>$(id).value="");
+  $("nac").value="br"; $("nacOutraWrap").hidden=true; $("bMaster").checked=true; $("bPkl").checked=false; $("dataAss").value=todayISO(); lastCep="";
+  $("cepHint").textContent=""; render(); window.scrollTo({top:0}); $("nome").focus();
+});
+render();
+
+// ---------- sessão / papel ----------
+(async()=>{
+  const auth = await exigirLogin();
+  if(!auth) return;
+  PERFIL = auth.profile;
+  $("whoami").textContent = PERFIL.nome;
+  $("menuVoltar").onclick = ()=>{ location.href = PERFIL.role==="admin" ? "admin.html" : "consultor.html"; };
+  if(PERFIL.role==="admin") $("cfg").hidden = false;
+  await carregarCfg();
+  carregarHistorico();
+})();
+})();
+
+  </script>
+</body>
+</html>
