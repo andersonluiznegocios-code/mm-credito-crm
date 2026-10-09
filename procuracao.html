@@ -94,6 +94,7 @@
 #proc .bar{left:220px}
 @media (max-width:720px){#proc .bar{left:0}}
 @media (max-width:720px){.app-shell{align-items:stretch}.main-content{width:100%}}
+#proc input[readonly]{opacity:.8;cursor:not-allowed}
 #proc .hist{margin-top:28px}
 #proc .hist h2{font-family:var(--f-display);font-weight:400;font-size:24px;letter-spacing:.04em;margin:0 0 10px;color:var(--fg)}
 #proc .hist table{font-size:13px}
@@ -166,7 +167,7 @@
 
       <fieldset>
         <legend>Contato <small>para receber os boletos</small></legend>
-        <div class="f"><label for="email">E-mail para boletos <i>*</i></label><input id="email" type="email" inputmode="email" placeholder="cliente@gmail.com"><div class="hint" id="emailHint"></div></div>
+        <div class="f"><label for="email">E-mail para boletos <i>*</i></label><input id="email" type="email" inputmode="email" placeholder="cliente@gmail.com" readonly tabindex="-1" title="E-mail fixo da MM Crédito"><div class="hint" id="emailHint"></div></div>
         <div class="row">
           <div class="f"><label for="tel1">Telefone <i>*</i></label><input id="tel1" inputmode="tel" placeholder="(11) 90000-0000"></div>
           <div class="f"><label for="tel2">Telefone 2</label><input id="tel2" inputmode="tel" placeholder="(11) 90000-0000"></div>
@@ -462,7 +463,7 @@ async function buscaCep(){
 
 // ---------- wiring ----------
 function todayISO(){ const n=new Date(); return n.getFullYear()+"-"+String(n.getMonth()+1).padStart(2,"0")+"-"+String(n.getDate()).padStart(2,"0"); }
-applyCfg(DEF); $("validade").value=DEF.validade; $("cidadeAss").value=DEF.cidadeAss; $("dataAss").value=todayISO();
+const EMAIL_PADRAO="andersonluiz.negocios@gmail.com"; $("email").value=EMAIL_PADRAO; applyCfg(DEF); $("validade").value=DEF.validade; $("cidadeAss").value=DEF.cidadeAss; $("dataAss").value=todayISO();
 $("cpf").addEventListener("input",e=>e.target.value=mCPF(e.target.value));
 $("cep").addEventListener("input",e=>{e.target.value=mCEP(e.target.value); if(dig(e.target.value).length===8) buscaCep();});
 ["tel1","tel2"].forEach(id=>$(id).addEventListener("input",e=>e.target.value=mTel(e.target.value)));
@@ -474,8 +475,8 @@ $("btnPdf").addEventListener("click",gerar);
 $("btnReset").addEventListener("click",()=>{applyCfg(DEF);render();toast("Texto padrão restaurado. Clique em Salvar configuração para valer para todos.");});
 $("btnSalvarCfg").addEventListener("click",salvarCfg);
 $("btnNovo").addEventListener("click",()=>{
-  ["nome","sexo","ec","prof","cpf","rg","cep","numero","logr","compl","bairro","cidade","uf","email","tel1","tel2","nacOutra"].forEach(id=>$(id).value="");
-  $("nac").value="br"; $("nacOutraWrap").hidden=true; $("bMaster").checked=true; $("bPkl").checked=false; $("dataAss").value=todayISO(); lastCep="";
+  ["nome","sexo","ec","prof","cpf","rg","cep","numero","logr","compl","bairro","cidade","uf","tel1","tel2","nacOutra"].forEach(id=>$(id).value="");
+  $("email").value=EMAIL_PADRAO; $("nac").value="br"; $("nacOutraWrap").hidden=true; $("bMaster").checked=true; $("bPkl").checked=false; $("dataAss").value=todayISO(); lastCep="";
   $("cepHint").textContent=""; render(); window.scrollTo({top:0}); $("nome").focus();
 });
 render();
