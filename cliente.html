@@ -467,8 +467,16 @@
         ${LEAD.valor_quitacao != null ? `<div><span class="lbl">Valor de quitação</span><br><strong style="color:var(--gold-soft); font-size:17px;">${formatBRL(LEAD.valor_quitacao)}</strong></div>` : ""}
         ${LEAD.numero_contrato ? `<div><span class="lbl">Nº do contrato</span><br><strong style="color:var(--gold-soft); font-size:17px;">${String(LEAD.numero_contrato).replace(/</g, "&lt;")}</strong></div>` : ""}
         ${LEAD.credor ? `<div><span class="lbl">Credor</span><br><strong style="color:var(--gold-soft); font-size:17px;">${String(LEAD.credor).replace(/</g, "&lt;")}</strong></div>` : ""}
+        <div id="infoProcuracao"><span class="lbl">Procuração</span><br><span id="procuracaoTxt" style="color:var(--muted);">Verificando...</span> <a href="procuracao.html?cliente=${LEAD.id}" style="color:var(--gold-soft); margin-left:6px;">📑 Gerar procuração</a></div>
         ${LEAD.produto_origem ? `<div><span class="lbl">Produto</span><br><strong style="color:var(--gold-soft); font-size:17px;">${(typeof PRODUTO_LABEL !== "undefined" && PRODUTO_LABEL[LEAD.produto_origem]) || LEAD.produto_origem}</strong></div>` : ""}
       `;
+      supabaseClient.rpc("ultima_procuracao", { p_cliente_id: LEAD.id }).then(({ data, error }) => {
+        const el = document.getElementById("procuracaoTxt");
+        if (!el) return;
+        if (error) { el.textContent = "—"; return; }
+        el.textContent = data ? "Procuração gerada em " + new Date(data).toLocaleDateString("pt-BR") : "Nenhuma gerada";
+        if (data) el.style.color = "var(--success)";
+      });
       // pré-preenche a linha do produto da base (cartão benefício, cartão de crédito ou empréstimo)
       const produtoBase = LEAD.produto_origem || "cartao_credito";
       const tipoLinha = produtoBase === "emprestimo" ? "margem" : "amortizacao";
